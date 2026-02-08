@@ -5,6 +5,9 @@ import plotly.graph_objects as go
 import google.generativeai as genai
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
 
+file_makro = "Makro Indikator AI.xlsx"
+file_adb = "INO_02022026.xlsx"
+
 # API Key Anda ditanam disini agar otomatis
 USER_API_KEY = "AIzaSyAenm5Pz-IaNsKgGaySNQHv45ggN4beoNo"
 # ==========================================
@@ -43,10 +46,10 @@ st.markdown("##### Engine: Holt-Winters (Econometric Forecasting) | Standard: Of
 @st.cache_data
 def load_data():
     try:
-        df_target = pd.read_excel("/content/Makro Indikator AI.xlsx", sheet_name=0)
-        df_triwulan = pd.read_excel("/content/Makro Indikator AI.xlsx", sheet_name=1)
-        df_makro = pd.read_excel("/content/Makro Indikator AI.xlsx", sheet_name=2)
-        df_hist_gdp = pd.read_excel("/content/INO_02022026.xlsx", sheet_name=2)
+        df_target = pd.read_excel(file_makro, sheet_name=0)
+        df_triwulan = pd.read_excel(file_makro, sheet_name=1)
+        df_makro = pd.read_excel(file_makro, sheet_name=2)
+        df_hist_gdp = pd.read_excel(file_adb, sheet_name=2)
         return df_target, df_triwulan, df_makro, df_hist_gdp
     except Exception as e:
         st.error(f"Error Loading Data: {e}")
