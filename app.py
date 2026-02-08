@@ -8,8 +8,16 @@ from statsmodels.tsa.holtwinters import ExponentialSmoothing
 file_makro = "Makro Indikator AI.xlsx"
 file_adb = "INO_02022026.xlsx"
 
-# API Key Anda ditanam disini agar otomatis
-USER_API_KEY = "AIzaSyAenm5Pz-IaNsKgGaySNQHv45ggN4beoNo"
+# ==========================================
+# 0. KONFIGURASI API KEY (SECURE)
+# ==========================================
+# Cek apakah ada di Secrets (Cloud) atau pakai Fallback (Local)
+try:
+    USER_API_KEY = st.secrets["GEMINI_API_KEY"]
+except:
+    # Ini hanya untuk jaga-jaga kalau dijalankan di laptop sendiri tanpa secrets
+    # Tapi JANGAN upload key asli ke GitHub lagi ya
+    USER_API_KEY = ""
 # ==========================================
 # 1. SETUP & DESIGN
 # ==========================================
