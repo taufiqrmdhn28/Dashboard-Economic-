@@ -257,54 +257,106 @@ if df_target is not None:
 
     # --- DEEP DIVE (FIXED YoY COLORS) ---
     st.markdown("### 🔍 Deep Dive: Indikator Makro (Real Sector)")
-    df_makro_sorted = df_makro.sort_values(by='Tanggal').reset_index(drop=True)
-    latest = df_makro_sorted.iloc[-1]
-    prev = df_makro_sorted.iloc[-2]
-    prev_year = df_makro_sorted.iloc[-13] if len(df_makro_sorted) > 12 else None
-
+    
+    # Pastikan Tanggal dibaca sebagai datetime dan urut
+    df_makro['Tanggal'] = pd.to_datetime(df_makro['Tanggal'])
+    df_makro = df_makro.sort_values(by='Tanggal')
+    
     cols = st.columns(4)
     probs = []
+    
+    # Rules: True = Naik Bagus (Hijau), False = Turun Bagus (Hijau)
+    rules = {
+        'PMI Manufaktur Negara Berkembang': True, 'Jumlah Uang Yang Beredar': True, 
+        'Penjualan Mobil': True, 'Penjualan semen': True, 'Ekspor Barang': True, 
+        'Impor Barang Modal': True, 'Impor Bahan Baku': True, 
+        'Impor Barang Konsumsi': False, 'Inflasi': False, 
+        'Nilai Tukar terhadap Dolar AS': False, 'Suku Bunga': False
+    }
 
-    rules = {'PMI Manufaktur Negara Berkembang': True, 'Jumlah Uang Yang Beredar': True, 'Penjualan Mobil': True, 'Penjualan semen': True, 'Ekspor Barang': True, 'Impor Barang Modal': True, 'Impor Bahan Baku': True, 'Impor Barang Konsumsi': False, 'Inflasi': False, 'Nilai Tukar terhadap Dolar AS': False, 'Suku Bunga': False}
+    # Ambil list kolom indikator (kecuali kolom Tanggal)
+    indicator_cols = [c for c in df_makro.columns if c != 'Tanggal']
 
-    for i, col in enumerate(df_makro.columns):
-        if col == 'Tanggal': continue
-        val = latest[col]
+    for i, col in enumerate(indicator_cols):
+        # 1. AMBIL DATA TERAKHIR YANG VALID (Bukan NaN)
+        # Trik: Ambil subset kolom ini, buang baris kosong, ambil yang paling bawah
+        valid_series = df_makro[['Tanggal', col]].dropna()
+        
+        if valid_series.empty:
+            continue # Skip jika data kosong total
+
+        latest_row = valid_series.iloc[-1]
+        val = latest_row[col]
+        date_obj = latest_row['Tanggal']
+        
+        # Format Tanggal untuk Label (Misal: Jan 2026)
+        date_str = date_obj.strftime("%b %Y")
+        
+        # 2. HITUNG MtM (Bandingkan dengan row sebelumnya di series yang valid)
+        if len(valid_series) > 1:
+            prev_row = valid_series.iloc[-2]
+            val_prev = prev_row[col]
+            mtm = ((val - val_prev)/val_prev)*100 if val_prev!=0 else 0
+        else:
+            mtm = 0
+
+        # 3. HITUNG YoY (Bandingkan dengan tahun lalu)
+        # Cari tanggal yang sama di tahun sebelumnya
+        target_date_yoy = date_obj - pd.DateOffset(years=1)
+        # Cari row di df_makro yang bulan & tahunnya sama
+        row_yoy = df_makro[
+            (df_makro['Tanggal'].dt.year == target_date_yoy.year) & 
+            (df_makro['Tanggal'].dt.month == target_date_yoy.month)
+        ]
+        
+        if not row_yoy.empty and pd.notna(row_yoy.iloc[0][col]):
+            val_yoy = row_yoy.iloc[0][col]
+            yoy = ((val - val_yoy)/val_yoy)*100 if val_yoy!=0 else 0
+            yoy_str = f"YoY: {yoy:+.2f}%"
+        else:
+            yoy = 0
+            yoy_str = "YoY: -"
+
+        # 4. LOGIKA WARNA (BADGE)
         is_bad_mtm, is_bad_yoy = False, False
-        rule_naik_bagus = rules.get(col, True)
+        rule_naik_bagus = rules.get(col, True) # Default Naik Bagus
 
+        # Format Angka Tampilan & Warna
         if "Inflasi" in col or "Suku Bunga" in col or "Nilai Tukar" in col:
             disp = f"{val:.2f}"
-            if val > 3.5 or val > 16000: is_bad_mtm = True
+            if val > 4.0 or val > 16000: is_bad_mtm = True # Threshold dummy
             color_1 = "badge-red" if is_bad_mtm else "badge-green"
             badge_1 = "Level"
             badge_2, color_2 = "", "badge-neutral"
         else:
             disp = f"{val:,.2f}"
-            mtm = ((val - prev[col])/prev[col])*100 if prev[col]!=0 else 0
             badge_1 = f"MtM: {mtm:+.2f}%"
-            # Rule MtM
+            
+            # Cek Rule MtM
             if (rule_naik_bagus and mtm < 0) or (not rule_naik_bagus and mtm > 0): is_bad_mtm = True
-
-            yoy = 0
-            if prev_year is not None:
-                yoy = ((val - prev_year[col])/prev_year[col])*100 if prev_year[col]!=0 else 0
-                badge_2 = f"YoY: {yoy:+.2f}%"
-                # Rule YoY
+            
+            # Cek Rule YoY
+            badge_2 = yoy_str
+            if yoy_str != "YoY: -":
                 if (rule_naik_bagus and yoy < 0) or (not rule_naik_bagus and yoy > 0): is_bad_yoy = True
-            else: badge_2 = "YoY: -"
-
+            
             if "PMI" in col and val < 50: is_bad_mtm = True; is_bad_yoy = True
+            
             color_1 = "badge-red" if is_bad_mtm else "badge-green"
-            color_2 = "badge-red" if is_bad_yoy else "badge-green" # FIXED
-
+            color_2 = "badge-red" if is_bad_yoy else "badge-green"
+            
             if is_bad_mtm or is_bad_yoy: probs.append(f"{col} (Weak Trend)")
 
-        html = f"""<div class="glass-card" style="padding: 15px; margin-bottom: 10px;">
-        <div class="card-title">{col}</div><div class="card-value">{disp}</div>
-        <span class="badge {color_1}">{badge_1}</span>
-        <span class="badge {color_2}">{badge_2}</span>
-        </div>"""
+        # 5. RENDER KARTU HTML (Ada tambahan label Tanggal Data)
+        html = f"""
+        <div class="glass-card" style="padding: 15px; margin-bottom: 10px;">
+            <div class="card-title">{col}</div>
+            <div class="card-value">{disp}</div>
+            <div style="font-size: 11px; color: #666; margin-bottom: 8px; font-style: italic;">Data: {date_str}</div>
+            <span class="badge {color_1}">{badge_1}</span>
+            <span class="badge {color_2}">{badge_2}</span>
+        </div>
+        """
         with cols[i%4]: st.markdown(html, unsafe_allow_html=True)
 
     # --- AI ADVISOR (CODINGAN USER YANG WORK) ---
