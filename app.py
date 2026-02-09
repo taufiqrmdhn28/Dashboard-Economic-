@@ -324,7 +324,7 @@ if df_target is not None:
         # Format Angka Tampilan & Warna
         if "Inflasi" in col or "Suku Bunga" in col or "Nilai Tukar" in col:
             disp = f"{val:.2f}"
-            if val > 4.0 or val > 16000: is_bad_mtm = True # Threshold dummy
+            if val > 3.5 or val > 16000: is_bad_mtm = True # Threshold dummy
             color_1 = "badge-red" if is_bad_mtm else "badge-green"
             badge_1 = "Level"
             badge_2, color_2 = "", "badge-neutral"
