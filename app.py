@@ -65,6 +65,25 @@ def load_data():
 
 df_target, df_triwulan, df_makro, df_hist_gdp = load_data()
 
+@st.cache_data(ttl=3600) # Refresh tiap jam
+def load_daily_data():
+    try:
+        # Link OneDrive diubah ujungnya jadi &download=1
+        url = "https://my.microsoftpersonalcontent.com/personal/5d6d871995dd5a40/_layouts/15/doc2.aspx?sourcedoc=%7B7f1929bd-0667-43ef-b464-96991fc1fab4%7D&download=1"
+        df_daily = pd.read_excel(url, sheet_name="Data", engine="openpyxl")
+        
+        # Asumsi kolom pertama adalah Tanggal
+        date_col = 'Tanggal' if 'Tanggal' in df_daily.columns else df_daily.columns[0]
+        df_daily[date_col] = pd.to_datetime(df_daily[date_col])
+        df_daily = df_daily.sort_values(by=date_col)
+        
+        return df_daily, date_col
+    except Exception as e:
+        st.warning(f"⚠️ Gagal sinkronisasi data OneDrive. Cek koneksi atau struktur file.")
+        return None, None
+
+df_daily, date_col_daily = load_daily_data()
+
 # ==========================================
 # 3. ROBUST ECONOMETRIC ENGINE (HOLT-WINTERS)
 # ==========================================
@@ -255,6 +274,68 @@ if df_target is not None:
     st.plotly_chart(fig, use_container_width=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
+    # ==========================================
+    # --- MONITORING DATA HARIAN (DTD & YTD) ---
+    # ==========================================
+    st.markdown("### 📈 Monitoring Data Harian")
+    
+    if 'df_daily' in locals() and df_daily is not None:
+        daily_cols = st.columns(4)
+        daily_indicators = ['IHSG', 'Saham Daily', 'Obligasi Daily', 'Brent', 'WTI', 'CPO', 'Emas', 'Batubara', 'Natural Gas', 'Nikel']
+        
+        idx = 0
+        for col in daily_indicators:
+            if col not in df_daily.columns:
+                continue
+                
+            valid_series = df_daily[[date_col_daily, col]].dropna()
+            if valid_series.empty:
+                continue
+                
+            latest_row = valid_series.iloc[-1]
+            val = latest_row[col]
+            date_obj = latest_row[date_col_daily]
+            date_str = date_obj.strftime("%d %b %Y")
+            
+            if len(valid_series) > 1:
+                prev_row = valid_series.iloc[-2]
+                val_prev = prev_row[col]
+                dtd = ((val - val_prev) / val_prev) * 100 if val_prev != 0 else 0
+            else:
+                dtd = 0
+                
+            current_year = date_obj.year
+            prev_year_data = valid_series[valid_series[date_col_daily].dt.year == current_year - 1]
+            
+            if not prev_year_data.empty:
+                ytd_base_val = prev_year_data.iloc[-1][col]
+                ytd = ((val - ytd_base_val) / ytd_base_val) * 100 if ytd_base_val != 0 else 0
+                ytd_str = f"YTD: {ytd:+.2f}%"
+            else:
+                ytd = 0
+                ytd_str = "YTD: -"
+                
+            color_dtd = "badge-red" if dtd < 0 else "badge-green"
+            color_ytd = "badge-red" if ytd < 0 else "badge-green"
+            
+            disp = f"{val:,.2f}" if val > 10 else f"{val:.2f}"
+            
+            html = f"""
+            <div class="glass-card" style="padding: 15px; margin-bottom: 10px;">
+                <div class="card-title">{col}</div>
+                <div class="card-value">{disp}</div>
+                <div style="font-size: 11px; color: #666; margin-bottom: 8px; font-style: italic;">Data: {date_str}</div>
+                <span class="badge {color_dtd}">DTD: {dtd:+.2f}%</span>
+                <span class="badge {color_ytd}">{ytd_str}</span>
+            </div>
+            """
+            with daily_cols[idx % 4]:
+                st.markdown(html, unsafe_allow_html=True)
+            idx += 1
+            
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    
     # --- DEEP DIVE (FIXED YoY COLORS) ---
     st.markdown("### 🔍 Deep Dive: Indikator Makro (Real Sector)")
     
