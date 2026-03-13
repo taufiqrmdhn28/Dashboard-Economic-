@@ -65,23 +65,26 @@ def load_data():
 
 df_target, df_triwulan, df_makro, df_hist_gdp = load_data()
 
+# ==========================================
+# 2.5. DATA LOADING (ONEDRIVE HARIAN)
+# ==========================================
 @st.cache_data(ttl=3600) # Refresh tiap jam
 def load_daily_data():
     try:
-        # Link OneDrive diubah ujungnya jadi ?download=1 agar otomatis di-download Pandas
-        url = "https://1drv.ms/x/c/5d6d871995dd5a40/IQC9KRl_ZwbvQ7Rklpkfwfq0AdknqrZby5VpOBs4xBCZw50?download=1"
+        # Link hasil dari Embed iframe + ditambahkan ?download=1
+        url = "https://1drv.ms/x/c/0d7b80eee690dc32/IQRnlQuD2OChRKvUwdvkbd_6AZzcPFqY_-4AW8CNkVplXyc?download=1"
         
         # Baca Excel langsung dari internet
         df_daily = pd.read_excel(url, sheet_name="Data", engine="openpyxl")
         
-        # Asumsi kolom pertama adalah Tanggal
+        # Format Tanggal
         date_col = 'Tanggal' if 'Tanggal' in df_daily.columns else df_daily.columns[0]
         df_daily[date_col] = pd.to_datetime(df_daily[date_col])
         df_daily = df_daily.sort_values(by=date_col)
         
         return df_daily, date_col
     except Exception as e:
-        st.warning(f"⚠️ Gagal sinkronisasi data OneDrive. Pastikan link aktif dan berisi Sheet 'Data'. Info Error: {e}")
+        st.warning(f"⚠️ Gagal sinkronisasi data OneDrive. Info Error: {e}")
         return None, None
 
 df_daily, date_col_daily = load_daily_data()
