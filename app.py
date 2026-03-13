@@ -68,8 +68,10 @@ df_target, df_triwulan, df_makro, df_hist_gdp = load_data()
 @st.cache_data(ttl=3600) # Refresh tiap jam
 def load_daily_data():
     try:
-        # Link OneDrive diubah ujungnya jadi &download=1
-        url = "https://my.microsoftpersonalcontent.com/personal/5d6d871995dd5a40/_layouts/15/doc2.aspx?sourcedoc=%7B7f1929bd-0667-43ef-b464-96991fc1fab4%7D&download=1"
+        # Link OneDrive diubah ujungnya jadi ?download=1 agar otomatis di-download Pandas
+        url = "https://1drv.ms/x/c/5d6d871995dd5a40/IQC9KRl_ZwbvQ7Rklpkfwfq0AdknqrZby5VpOBs4xBCZw50?download=1"
+        
+        # Baca Excel langsung dari internet
         df_daily = pd.read_excel(url, sheet_name="Data", engine="openpyxl")
         
         # Asumsi kolom pertama adalah Tanggal
@@ -79,7 +81,7 @@ def load_daily_data():
         
         return df_daily, date_col
     except Exception as e:
-        st.warning(f"⚠️ Gagal sinkronisasi data OneDrive. Cek koneksi atau struktur file.")
+        st.warning(f"⚠️ Gagal sinkronisasi data OneDrive. Pastikan link aktif dan berisi Sheet 'Data'. Info Error: {e}")
         return None, None
 
 df_daily, date_col_daily = load_daily_data()
