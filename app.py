@@ -71,11 +71,11 @@ df_target, df_triwulan, df_makro, df_hist_gdp = load_data()
 @st.cache_data(ttl=3600) # Refresh tiap jam
 def load_daily_data():
     try:
-        # Link Google Sheets disulap menjadi link direct download CSV
-        url = "https://docs.google.com/spreadsheets/d/1wM0lHYqNTgf4Jo4AMCDakWnwqF1lVg-7/edit?usp=sharing&ouid=105764570623708241152&rtpof=true&sd=true"
+        # Trik Baru: Kita ganti "format=csv" menjadi "format=xlsx"
+        url = "https://docs.google.com/spreadsheets/d/1wM0lHYqNTgf4Jo4AMCDakWnwqF1lVg-7/export?format=xlsx&gid=1981545536"
         
-        # Karena ini CSV dari Google Sheets, kita pakai read_csv (jauh lebih cepat & ringan)
-        df_daily = pd.read_csv(url)
+        # Kita kembali pakai read_excel. Ini 100% kebal dari error "Kolom Hantu"
+        df_daily = pd.read_excel(url, engine="openpyxl")
         
         # Asumsi kolom pertama adalah Tanggal
         date_col = 'Tanggal' if 'Tanggal' in df_daily.columns else df_daily.columns[0]
@@ -84,7 +84,7 @@ def load_daily_data():
         
         return df_daily, date_col
     except Exception as e:
-        st.warning(f"⚠️ Gagal sinkronisasi data Google Sheets. Pastikan akses Share diatur ke 'Anyone with the link'. Info Error: {e}")
+        st.warning(f"⚠️ Gagal sinkronisasi data Google Sheets. Info Error: {e}")
         return None, None
 
 df_daily, date_col_daily = load_daily_data()
