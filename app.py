@@ -478,17 +478,18 @@ if df_target is not None:
         with cols[i%4]: st.markdown(html, unsafe_allow_html=True)
 
     # --- AI ADVISOR (CODINGAN USER YANG WORK) ---
-    st.markdown("### 🧠 AI Policy Generator (Evidence-Based)")
+    st.markdown("### 🧠 AI Policy Generator")
     st.markdown('<div class="glass-card">', unsafe_allow_html=True)
 
+    # Tombol langsung muncul tanpa input field
     if st.button("Generate Kebijakan Strategis (AI)"):
         genai.configure(api_key=USER_API_KEY)
-        with st.spinner('Memanggil AI (Gemini Pro) untuk analisis mendalam...'):
+        with st.spinner('AI sedang mensimulasikan skenario ekonomi...'):
             try:
-                # 1. UPGRADE MODEL: Prioritaskan 'PRO' daripada 'FLASH'
+                # Auto-Detect Model (Smart Logic)
                 avail = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-                # Cari model pro dulu, kalau gak ada baru flash
-                model_name = next((m for m in avail if 'pro' in m), next((m for m in avail if 'flash' in m), avail[0] if avail else None))
+                model_name = next((m for m in avail if 'flash' in m), avail[0] if avail else None)
+
 
                 if not model_name:
                     st.error("Gagal mendeteksi model. Cek API Key atau Region.")
@@ -496,10 +497,8 @@ if df_target is not None:
                     model = genai.GenerativeModel(model_name)
 
                     prob_str = ", ".join(probs) if probs else "None (Stabil)"
-                    
-                    # 2. UPGRADE PROMPT: Fokus ke Seminal Paper & Link Google Scholar
                     prompt = f"""
-                    Role: Perencana Ahli Utama (Senior Policy Planner) Bappenas Republik Indonesia.
+                    Role: Perencana Bappenas Republik Indonesia.
                     
                     Konteks Ekonomi Saat Ini:
                     - View Periode Analisis: {selected_view}
