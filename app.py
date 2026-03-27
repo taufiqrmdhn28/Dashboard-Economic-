@@ -497,16 +497,21 @@ if df_target is not None:
 
                     prob_str = ", ".join(probs) if probs else "None (Stabil)"
                     prompt = f"""
-                    Role: Chief Economist RI.
-                    Konteks:
-                    - View Periode: {selected_view}
-                    - Rata-rata Pertumbuhan: {current_avg:.2f}%
-                    - Target: {current_target}%
-                    - Masalah Indikator Saat Ini: {prob_str}.
+                    Role: Perencana Republik Indonesia.
+                    
+                    Konteks Ekonomi Saat Ini:
+                    - View Periode Analisis: {selected_view}
+                    - Rata-rata Proyeksi Pertumbuhan: {current_avg:.2f}%
+                    - Target Pertumbuhan (Fokus Utama 2026): {current_target}%
+                    - Sinyal Pelemahan Indikator Makro (Bulanan): {prob_str}.
+                    - Dinamika Sektor Keuangan & Komoditas (Harian): Membutuhkan mitigasi taktis terhadap volatilitas pasar saat ini.
 
-                    Tugas:
-                    Berikan 5 rekomendasi kebijakan (Jangan Kebijakan yang normatif) dari jurnal-jurnal yang terindex Scopus (evidence-Based) bukan hanya teori saja namun berdasarkan pengalaman dari keberhasilan negara lain untuk mengamankan trajectory pertumbuhan.
-                    Hubungkan dengan data indikator yang melemah.
+                    Tugas Anda:
+                    1. Rumuskan 5 rekomendasi kebijakan strategis yang BUKAN normatif (harus spesifik, terukur, dan *actionable*).
+                    2. Kebijakan harus merespons dan mensintesiskan dua hal: memitigasi risiko gejolak pasar jangka pendek (data harian) sekaligus memperbaiki fundamental sektor riil yang melemah ({prob_str}) untuk mengamankan trajectory target pertumbuhan 2026.
+                    3. Setiap kebijakan WAJIB *evidence-based*, didasarkan pada rekam jejak keberhasilan implementasi di negara lain (best practices).
+                    4. Seluruh argumen harus merujuk pada temuan dari jurnal-jurnal akademik bereputasi (terindeks Scopus).
+                    5. Di bagian paling akhir, WAJIB lampirkan "Daftar Pustaka" yang berisi referensi jurnal yang Anda gunakan (Sertakan Penulis, Tahun, Judul, dan Temuan Relevan).
                     """
 
                     res = model.generate_content(prompt)
