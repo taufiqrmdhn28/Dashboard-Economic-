@@ -214,60 +214,92 @@ if df_target is not None:
         current_avg = np.mean(now_2026)
         current_target = t_2026
 
-    else: # Full
-        final_x = ['Q1-25', 'Q2-25', 'Q3-25', 'Q4-25', 'Q1-26', 'Q2-26', 'Q3-26', 'Q4-26']
-        final_real = real_2025 + real_2026
-        final_now = now_2025 + now_2026
-        final_target = [t_2025]*4 + [t_2026]*4
-        vals = [r if r is not None else n for r, n in zip(real_2025+real_2026, now_2025+now_2026)]
-        vals = [v for v in vals if v is not None]
-        current_avg = np.mean(vals) if vals else 0
+    else: # Full Trajectory
+        # Custom Logic untuk Full Trajectory (2010 - 2026)
+        df_h = df_hist_gdp.copy()
+        try:
+            if pd.api.types.is_numeric_dtype(df_h.iloc[:, 0]):
+                 df_h.iloc[:, 0] = pd.to_datetime(df_h.iloc[:, 0], unit='D', origin='1899-12-30')
+            else:
+                 df_h.iloc[:, 0] = pd.to_datetime(df_h.iloc[:, 0])
+        except: pass
+        df_h.set_index(df_h.columns[0], inplace=True)
+        col_target = 'RGDP_growth' if 'RGDP_growth' in df_h.columns else df_h.columns[1]
+        series_hist = df_h[col_target].dropna()
+        
+        # 1. Filter data historis mulai dari tahun 2010 ke atas
+        series_hist = series_hist[series_hist.index >= '2010-01-01']
+        
+        # Format sumbu X jadi '2010-Q1', '2010-Q2', dsb.
+        try:
+            x_hist = [f"{d.year}-Q{(d.month-1)//3 + 1}" for d in series_hist.index]
+        except:
+            x_hist = [str(i) for i in range(len(series_hist))]
+            
+        y_hist = series_hist.values.tolist()
+        
+        x_2025 = ['2025-Q1', '2025-Q2', '2025-Q3', '2025-Q4']
+        x_2026 = ['2026-Q1', '2026-Q2', '2026-Q3', '2026-Q4']
+        
+        # 2. Garis Realisasi (Gabungan 2010 Historis + 2025 Berjalan)
+        full_x_real = x_hist + x_2025
+        full_y_real = y_hist + combined_2025
+        
+        # 3. Garis Proyeksi (Mulai dari ujung data 2025 ke 2026 supaya grafiknya tersambung)
+        full_x_proj = [x_2025[-1]] + x_2026
+        full_y_proj = [combined_2025[-1]] + preds_2026
+        
+        current_avg = np.mean(preds_2026) # Acuan status rata-rata difokuskan ke 2026
         current_target = t_2026
 
     # CHART
     title_text = f"Outlook Ekonomi: {selected_view}"
     if selected_view == "2026": title_text += " (Proyeksi Holt-Winters)"
+    elif selected_view == "Full Trajectory": title_text = "Historis & Proyeksi Ekonomi (2010 - 2026)"
 
     st.markdown(f"### {title_text}")
     fig = go.Figure()
 
-    # 1. Bar Realisasi
-    fig.add_trace(go.Bar(
-        x=final_x, y=final_real, name='Realisasi (BPS)', marker_color='#2980b9',
-        text=[f"{v:.2f}%" if v else "" for v in final_real], textposition='auto'
-    ))
-
-    # 2. Bar/Line Nowcast
-    if selected_view == "2026":
-        # Line Melengkung Smooth
+    if selected_view == "Full Trajectory":
+        # Line Realisasi (2010 - 2025) -> Warna Kuning (Solid)
         fig.add_trace(go.Scatter(
-            x=final_x, y=final_now, name='Proyeksi Model (Seasonal)',
-            mode='lines+markers', line=dict(color='#f39c12', width=4, shape='spline'),
-            text=[f"{v:.2f}%" for v in final_now], textposition='top center'
+            x=full_x_real, y=full_y_real, name='Realisasi (2010-2025)',
+            mode='lines', line=dict(color='#f1c40f', width=2.5) # #f1c40f adalah kuning
         ))
-    elif selected_view == "Full Trajectory":
-        # Bar untuk 2025
-        fig.add_trace(go.Bar(
-            x=final_x[:4], y=final_now[:4], name='Nowcasting 2025', marker_color='#f39c12',
-            text=[f"{v:.2f}%" if v else "" for v in final_now[:4]], textposition='auto'
-        ))
-        # Line untuk 2026
+        
+        # Line Proyeksi (2026) -> Warna Hijau (Putus-putus)
         fig.add_trace(go.Scatter(
-            x=final_x[4:], y=final_now[4:], name='Proyeksi 2026', mode='lines+markers',
-            line=dict(color='#27ae60', width=4, shape='spline')
+            x=full_x_proj, y=full_y_proj, name='Proyeksi 2026',
+            mode='lines', line=dict(color='#27ae60', width=2.5, dash='dot') # #27ae60 adalah hijau
         ))
-        # Connector
-        last_val = real_2025[-1] if real_2025[-1] else now_2025[-1]
-        fig.add_trace(go.Scatter(x=[final_x[3], final_x[4]], y=[last_val or 5.0, final_now[4]], mode='lines', line=dict(color='#27ae60', dash='dot'), showlegend=False))
+        
+        # Layout Full Trajectory (Tanpa Target APBN)
+        fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', legend=dict(orientation="h", y=1.1), height=450)
+        
     else:
+        # Layout untuk 2025 dan 2026 (Tetap seperti semula)
         fig.add_trace(go.Bar(
-            x=final_x, y=final_now, name='Nowcasting', marker_color='#f39c12',
-            text=[f"{v:.2f}%" if v else "" for v in final_now], textposition='auto'
+            x=final_x, y=final_real, name='Realisasi (BPS)', marker_color='#2980b9',
+            text=[f"{v:.2f}%" if v else "" for v in final_real], textposition='auto'
         ))
 
-    fig.add_trace(go.Scatter(x=final_x, y=final_target, name='Target APBN', mode='lines', line=dict(color='#c0392b', width=3, dash='dash')))
-    fig.update_layout(barmode='group', plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', legend=dict(orientation="h", y=1.1), height=450)
+        if selected_view == "2026":
+            fig.add_trace(go.Scatter(
+                x=final_x, y=final_now, name='Proyeksi Model (Seasonal)',
+                mode='lines+markers', line=dict(color='#f39c12', width=4, shape='spline'),
+                text=[f"{v:.2f}%" for v in final_now], textposition='top center'
+            ))
+        else:
+            fig.add_trace(go.Bar(
+                x=final_x, y=final_now, name='Nowcasting', marker_color='#f39c12',
+                text=[f"{v:.2f}%" if v else "" for v in final_now], textposition='auto'
+            ))
 
+        # Garis Target APBN HANYA muncul di 2025 dan 2026
+        fig.add_trace(go.Scatter(x=final_x, y=final_target, name='Target APBN', mode='lines', line=dict(color='#c0392b', width=3, dash='dash')))
+        fig.update_layout(barmode='group', plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', legend=dict(orientation="h", y=1.1), height=450)
+
+    # Render Metric dan Grafiknya
     c1, c2, c3 = st.columns(3)
     c1.metric("Target Acuan", f"{current_target}%")
     gap = current_avg - current_target
