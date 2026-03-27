@@ -71,20 +71,20 @@ df_target, df_triwulan, df_makro, df_hist_gdp = load_data()
 @st.cache_data(ttl=3600) # Refresh tiap jam
 def load_daily_data():
     try:
-        # Link hasil dari Embed iframe + ditambahkan ?download=1
-        url = "https://1drv.ms/x/c/0d7b80eee690dc32/IQRnlQuD2OChRKvUwdvkbd_6AZzcPFqY_-4AW8CNkVplXyc?download=1"
+        # Link Google Sheets disulap menjadi link direct download CSV
+        url = "https://docs.google.com/spreadsheets/d/1wM0lHYqNTgf4Jo4AMCDakWnwqF1lVg-7/export?format=csv&gid=1981545536"
         
-        # Baca Excel langsung dari internet
-        df_daily = pd.read_excel(url, sheet_name="Data", engine="openpyxl")
+        # Karena ini CSV dari Google Sheets, kita pakai read_csv (jauh lebih cepat & ringan)
+        df_daily = pd.read_csv(url)
         
-        # Format Tanggal
+        # Asumsi kolom pertama adalah Tanggal
         date_col = 'Tanggal' if 'Tanggal' in df_daily.columns else df_daily.columns[0]
         df_daily[date_col] = pd.to_datetime(df_daily[date_col])
         df_daily = df_daily.sort_values(by=date_col)
         
         return df_daily, date_col
     except Exception as e:
-        st.warning(f"⚠️ Gagal sinkronisasi data OneDrive. Info Error: {e}")
+        st.warning(f"⚠️ Gagal sinkronisasi data Google Sheets. Pastikan akses Share diatur ke 'Anyone with the link'. Info Error: {e}")
         return None, None
 
 df_daily, date_col_daily = load_daily_data()
