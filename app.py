@@ -478,17 +478,17 @@ if df_target is not None:
         with cols[i%4]: st.markdown(html, unsafe_allow_html=True)
 
     # --- AI ADVISOR (CODINGAN USER YANG WORK) ---
-    st.markdown("### 🧠 AI Policy Generator")
+    st.markdown("### 🧠 AI Policy Generator (Evidence-Based)")
     st.markdown('<div class="glass-card">', unsafe_allow_html=True)
 
-    # Tombol langsung muncul tanpa input field
     if st.button("Generate Kebijakan Strategis (AI)"):
         genai.configure(api_key=USER_API_KEY)
-        with st.spinner('AI sedang mensimulasikan skenario ekonomi...'):
+        with st.spinner('Memanggil AI (Gemini Pro) untuk analisis mendalam...'):
             try:
-                # Auto-Detect Model (Smart Logic)
+                # 1. UPGRADE MODEL: Prioritaskan 'PRO' daripada 'FLASH'
                 avail = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-                model_name = next((m for m in avail if 'flash' in m), avail[0] if avail else None)
+                # Cari model pro dulu, kalau gak ada baru flash
+                model_name = next((m for m in avail if 'pro' in m), next((m for m in avail if 'flash' in m), avail[0] if avail else None))
 
                 if not model_name:
                     st.error("Gagal mendeteksi model. Cek API Key atau Region.")
@@ -496,30 +496,35 @@ if df_target is not None:
                     model = genai.GenerativeModel(model_name)
 
                     prob_str = ", ".join(probs) if probs else "None (Stabil)"
+                    
+                    # 2. UPGRADE PROMPT: Fokus ke Seminal Paper & Link Google Scholar
                     prompt = f"""
-                    Role: Perencana Republik Indonesia.
+                    Role: Perencana Ahli Utama (Senior Policy Planner) Bappenas Republik Indonesia.
                     
                     Konteks Ekonomi Saat Ini:
                     - View Periode Analisis: {selected_view}
-                    - Rata-rata Proyeksi Pertumbuhan: {current_avg:.2f}%
-                    - Target Pertumbuhan (Fokus Utama 2026): {current_target}%
-                    - Sinyal Pelemahan Indikator Makro (Bulanan): {prob_str}.
-                    - Dinamika Sektor Keuangan & Komoditas (Harian): Membutuhkan mitigasi taktis terhadap volatilitas pasar saat ini.
+                    - Rata-rata Proyeksi: {current_avg:.2f}% | Target 2026: {current_target}%
+                    - Sinyal Pelemahan Bulanan: {prob_str}.
+                    - Dinamika Harian: Membutuhkan mitigasi gejolak pasar komoditas & finansial.
 
                     Tugas Anda:
-                    1. Rumuskan 5 rekomendasi kebijakan strategis yang BUKAN normatif (harus spesifik, terukur, dan actionable).
-                    2. Kebijakan harus merespons dan mensintesiskan dua hal: memitigasi risiko gejolak pasar jangka pendek (data harian) sekaligus memperbaiki fundamental sektor riil yang melemah ({prob_str}) untuk mengamankan trajectory target pertumbuhan 2026.
-                    3. Setiap kebijakan WAJIB evidence-based, didasarkan pada rekam jejak keberhasilan implementasi di negara lain (best practices).
-                    4. Seluruh argumen harus merujuk pada temuan dari jurnal-jurnal akademik bereputasi (terindeks Scopus Q1/Q2) atau publikasi resmi lembaga kredibel (NBER, IMF, World Bank, ADB).
-                    5. ATURAN ANTI-HALUSINASI: Anda DILARANG KERAS mengarang/menciptakan judul jurnal, nama penulis, atau link fiktif. Jika Anda tidak yakin paper tersebut eksis, gunakan paper seminal (utama) lain yang sudah pasti valid.
-                    6. DAFTAR PUSTAKA: Di bagian paling akhir, WAJIB lampirkan referensi dengan format ketat berikut:
-                       - Penulis (Tahun). "Judul Paper". Nama Jurnal/Institusi.
-                       - Temuan Relevan: (Sebutkan 1-2 kalimat intisari temuan yang mendasari kebijakan).
-                       - Tautan (Wajib): Berikan Link DOI resmi (contoh: https://doi.org/10.xxxx) ATAU Link Pencarian Google Scholar (contoh: https://scholar.google.com/scholar?q=Judul+Paper+Tepatnya+Disini).
+                    1. Rumuskan 5 rekomendasi kebijakan strategis (non-normatif, spesifik, actionable) untuk mengamankan target 2026.
+                    2. Kebijakan harus mensintesiskan mitigasi jangka pendek (data harian) dan perbaikan struktural (data bulanan).
+                    3. WAJIB didasarkan pada "Grand Theory" atau "Seminal Paper" (Paper Utama yang sudah sangat terkenal dan valid secara akademik) dari ekonom ternama dunia (misal: Dani Rodrik, Paul Krugman, Joseph Stiglitz, dll). Jangan menggunakan paper antah-berantah.
+                    
+                    ATURAN KETAT DAFTAR PUSTAKA (ANTI-HALUSINASI):
+                    - DILARANG KERAS memberikan link URL langsung ke jurnal atau link DOI (karena AI sering salah/halusinasi URL).
+                    - Sebagai gantinya, berikan format referensi seperti di bawah ini, di mana URL-nya menggunakan format pencarian Google Scholar yang PASTI BISA DIKLIK.
+
+                    Format Output Daftar Pustaka untuk setiap kebijakan (Tulis di akhir respon):
+                    [Nomor Kebijakan]. Dasar Teori/Konsep: (Sebutkan Nama Teorinya)
+                    - Tokoh/Penulis Utama: (Nama Ekonom Valid, Tahun)
+                    - Bukti Negara Lain: (Contoh valid implementasinya, misal: Kebijakan X di Chile tahun 2000-an)
+                    - Link Jurnal (Google Scholar): https://scholar.google.com/scholar?q=[ISI_DENGAN_NAMA_PENULIS_DAN_KATA_KUNCI_KONSEP_TANPA_SPASI_GUNAKAN_TANDA_TAMBAH]
                     """
 
                     res = model.generate_content(prompt)
-                    st.success(f"Analisis Selesai (Model: {model_name})")
+                    st.success(f"Analisis Selesai (Engine: {model_name})")
                     st.markdown(res.text)
             except Exception as e:
                 st.error(f"Error AI: {e}")
