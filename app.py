@@ -477,6 +477,84 @@ if df_target is not None:
         """
         with cols[i%4]: st.markdown(html, unsafe_allow_html=True)
 
+    # ==========================================
+    # --- HEATMAP BULANAN (YOY TRACKER) ---
+    # ==========================================
+    st.markdown("### 🗺️ Heatmap Tracker (Tren YoY 2025)")
+    st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+    
+    # Filter data mulai Jan 2025
+    df_hm = df_makro[df_makro['Tanggal'] >= '2025-01-01'].copy()
+    
+    if not df_hm.empty:
+        dates_hm = df_hm['Tanggal'].tolist()
+        x_labels = df_hm['Tanggal'].dt.strftime('%b %Y').tolist()
+        
+        z_data, text_data = [], []
+        
+        # Menggunakan indicator_cols & rules dari Deep Dive
+        for col in indicator_cols:
+            rule_naik_bagus = rules.get(col, True)
+            col_z, col_text = [], []
+            
+            for d in dates_hm:
+                # Nilai Bulan Ini
+                curr_row = df_makro[df_makro['Tanggal'] == d]
+                val = curr_row[col].values[0] if not curr_row.empty else np.nan
+                
+                # Nilai Tahun Lalu (Bulan yang sama)
+                prev_d = d - pd.DateOffset(years=1)
+                prev_row = df_makro[(df_makro['Tanggal'].dt.year == prev_d.year) & (df_makro['Tanggal'].dt.month == prev_d.month)]
+                val_prev = prev_row[col].values[0] if not prev_row.empty else np.nan
+                
+                if pd.isna(val):
+                    col_z.append(0) # Abu-abu jika data kosong
+                    col_text.append("NaN")
+                else:
+                    # Format teks angka
+                    if "Inflasi" in col or "Suku Bunga" in col or "Nilai Tukar" in col:
+                        txt = f"{val:.2f}"
+                    else:
+                        txt = f"{val:,.2f}" if val >= 10 else f"{val:.2f}"
+                        
+                    if pd.isna(val_prev):
+                        col_z.append(0)
+                        col_text.append(txt)
+                    else:
+                        diff = val - val_prev
+                        if diff == 0:
+                            col_z.append(0)
+                        elif rule_naik_bagus:
+                            col_z.append(1 if diff > 0 else -1) # 1=Hijau, -1=Merah
+                        else:
+                            col_z.append(1 if diff < 0 else -1) # Untuk inflasi, turun itu 1 (Hijau)
+                        col_text.append(txt)
+            
+            z_data.append(col_z)
+            text_data.append(col_text)
+            
+        # Bikin Grafik Heatmap Plotly
+        fig_hm = go.Figure(data=go.Heatmap(
+            z=z_data, x=x_labels, y=indicator_cols, text=text_data,
+            texttemplate="%{text}", 
+            colorscale=[[0.0, '#e74c3c'], [0.5, '#ecf0f1'], [1.0, '#2ecc71']], # Merah, Abu-abu, Hijau
+            zmin=-1, zmax=1, showscale=False, xgap=3, ygap=3
+        ))
+        
+        fig_hm.update_layout(
+            height=150 + len(indicator_cols)*35,
+            margin=dict(l=200, r=20, t=30, b=20),
+            plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
+            yaxis=dict(autorange="reversed", tickfont=dict(size=12, color='#333', weight='bold')) 
+        )
+        
+        st.plotly_chart(fig_hm, use_container_width=True)
+        st.markdown("<p style='font-size: 11px; color: #666; text-align: center;'>Keterangan Warna: 🟩 Mengalami Perbaikan (YoY) | 🟥 Mengalami Perlambatan (YoY) | ⬜ Stagnan / Belum Rilis</p>", unsafe_allow_html=True)
+    else:
+        st.info("Belum ada data bulanan untuk tahun 2025.")
+        
+    st.markdown('</div>', unsafe_allow_html=True)
+    
     # --- AI ADVISOR (CODINGAN USER YANG WORK) ---
     st.markdown("### 🧠 AI Policy Generator")
     st.markdown('<div class="glass-card">', unsafe_allow_html=True)
