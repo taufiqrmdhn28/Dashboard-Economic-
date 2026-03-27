@@ -507,11 +507,15 @@ if df_target is not None:
                     - Dinamika Sektor Keuangan & Komoditas (Harian): Membutuhkan mitigasi taktis terhadap volatilitas pasar saat ini.
 
                     Tugas Anda:
-                    1. Rumuskan 5 rekomendasi kebijakan strategis yang BUKAN normatif (harus spesifik, terukur, dan *actionable*).
+                    1. Rumuskan 5 rekomendasi kebijakan strategis yang BUKAN normatif (harus spesifik, terukur, dan actionable).
                     2. Kebijakan harus merespons dan mensintesiskan dua hal: memitigasi risiko gejolak pasar jangka pendek (data harian) sekaligus memperbaiki fundamental sektor riil yang melemah ({prob_str}) untuk mengamankan trajectory target pertumbuhan 2026.
-                    3. Setiap kebijakan WAJIB *evidence-based*, didasarkan pada rekam jejak keberhasilan implementasi di negara lain (best practices).
-                    4. Seluruh argumen harus merujuk pada temuan dari jurnal-jurnal akademik bereputasi (terindeks Scopus).
-                    5. Di bagian paling akhir, WAJIB lampirkan "Daftar Pustaka" yang berisi referensi jurnal yang Anda gunakan (Sertakan Penulis, Tahun, Judul, dan Temuan Relevan).
+                    3. Setiap kebijakan WAJIB evidence-based, didasarkan pada rekam jejak keberhasilan implementasi di negara lain (best practices).
+                    4. Seluruh argumen harus merujuk pada temuan dari jurnal-jurnal akademik bereputasi (terindeks Scopus Q1/Q2) atau publikasi resmi lembaga kredibel (NBER, IMF, World Bank, ADB).
+                    5. ATURAN ANTI-HALUSINASI: Anda DILARANG KERAS mengarang/menciptakan judul jurnal, nama penulis, atau link fiktif. Jika Anda tidak yakin paper tersebut eksis, gunakan paper seminal (utama) lain yang sudah pasti valid.
+                    6. DAFTAR PUSTAKA: Di bagian paling akhir, WAJIB lampirkan referensi dengan format ketat berikut:
+                       - Penulis (Tahun). "Judul Paper". Nama Jurnal/Institusi.
+                       - Temuan Relevan: (Sebutkan 1-2 kalimat intisari temuan yang mendasari kebijakan).
+                       - Tautan (Wajib): Berikan Link DOI resmi (contoh: https://doi.org/10.xxxx) ATAU Link Pencarian Google Scholar (contoh: https://scholar.google.com/scholar?q=Judul+Paper+Tepatnya+Disini).
                     """
 
                     res = model.generate_content(prompt)
