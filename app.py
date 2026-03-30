@@ -477,18 +477,6 @@ if df_target is not None:
         """
         with cols[i%4]: st.markdown(html, unsafe_allow_html=True)
 
-    Ah, siap Min! Betul juga ya, kalau untuk indikator makro utama seperti PMI, Suku Bunga, dan Inflasi, Menteri pasti lebih butuh melihat "Level Aslinya" (misal: PMI 51.2, Inflasi 2.5) daripada selisih poinnya, supaya langsung terbayang posisinya saat ini.
-
-Tenang saja, kodingannya sudah saya ubah.
-
-Teks yang muncul di kotak: Menjadi angka aslinya (Nilai Sebenarnya).
-
-Warna kotaknya: Tetap mengikuti logika YoY (Hijau kalau membaik dari tahun lalu, Merah kalau memburuk dari tahun lalu). Jadi fungsi tracker-nya tetap berjalan sempurna!
-
-🛠️ CARA UPDATE KODINGAN:
-Cari blok kode # --- HEATMAP BULANAN (YOY TRACKER) --- di app.py Min, lalu HAPUS blok tersebut dan GANTI dengan kode di bawah ini:
-
-Python
     # ==========================================
     # --- HEATMAP BULANAN (YOY TRACKER) ---
     # ==========================================
