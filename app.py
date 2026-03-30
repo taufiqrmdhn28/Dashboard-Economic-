@@ -477,6 +477,18 @@ if df_target is not None:
         """
         with cols[i%4]: st.markdown(html, unsafe_allow_html=True)
 
+    Ah, siap Min! Betul juga ya, kalau untuk indikator makro utama seperti PMI, Suku Bunga, dan Inflasi, Menteri pasti lebih butuh melihat "Level Aslinya" (misal: PMI 51.2, Inflasi 2.5) daripada selisih poinnya, supaya langsung terbayang posisinya saat ini.
+
+Tenang saja, kodingannya sudah saya ubah.
+
+Teks yang muncul di kotak: Menjadi angka aslinya (Nilai Sebenarnya).
+
+Warna kotaknya: Tetap mengikuti logika YoY (Hijau kalau membaik dari tahun lalu, Merah kalau memburuk dari tahun lalu). Jadi fungsi tracker-nya tetap berjalan sempurna!
+
+🛠️ CARA UPDATE KODINGAN:
+Cari blok kode # --- HEATMAP BULANAN (YOY TRACKER) --- di app.py Min, lalu HAPUS blok tersebut dan GANTI dengan kode di bawah ini:
+
+Python
     # ==========================================
     # --- HEATMAP BULANAN (YOY TRACKER) ---
     # ==========================================
@@ -513,16 +525,16 @@ if df_target is not None:
                 else:
                     diff = val - val_prev
                     
-                    # 1. Logika Teks (Menampilkan YoY / Selisih)
-                    # Khusus PMI, Inflasi, Suku Bunga, Nilai Tukar -> Tampilkan selisih absolut (bukan persentase)
+                    # 1. Logika Teks (Menampilkan Nilai Asli vs Persentase YoY)
                     if "PMI" in col or "Inflasi" in col or "Suku Bunga" in col or "Nilai Tukar" in col:
-                        txt = f"{diff:+.2f}"
+                        # Tampilkan nilai aslinya (level), khusus Rupiah pakai format ribuan
+                        txt = f"{val:,.2f}" if val > 1000 else f"{val:.2f}"
                     else:
-                        # Indikator lain pakai persentase YoY
+                        # Indikator lain tetap pakai persentase YoY
                         yoy_pct = (diff / val_prev) * 100 if val_prev != 0 else 0
                         txt = f"{yoy_pct:+.2f}%"
                         
-                    # 2. Logika Warna (Hijau / Merah)
+                    # 2. Logika Warna (Hijau / Merah) TETAP berdasarkan perbaikan YoY
                     if diff == 0:
                         col_z.append(0)
                     elif rule_naik_bagus:
