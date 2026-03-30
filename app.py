@@ -507,28 +507,32 @@ if df_target is not None:
                 prev_row = df_makro[(df_makro['Tanggal'].dt.year == prev_d.year) & (df_makro['Tanggal'].dt.month == prev_d.month)]
                 val_prev = prev_row[col].values[0] if not prev_row.empty else np.nan
                 
-                if pd.isna(val):
-                    col_z.append(0) # Abu-abu jika data kosong
-                    col_text.append("NaN")
+                if pd.isna(val) or pd.isna(val_prev):
+                    col_z.append(0) # Abu-abu jika data kosong / tahun lalu tidak ada
+                    col_text.append("-")
                 else:
-                    # Format teks angka
-                    if "Inflasi" in col or "Suku Bunga" in col or "Nilai Tukar" in col:
-                        txt = f"{val:.2f}"
+                    diff = val - val_prev
+                    
+                    # 1. Logika Teks (Menampilkan YoY / Selisih)
+                    # Khusus PMI, Inflasi, Suku Bunga, Nilai Tukar -> Tampilkan selisih absolut (bukan persentase)
+                    if "PMI" in col or "Inflasi" in col or "Suku Bunga" in col or "Nilai Tukar" in col:
+                        txt = f"{diff:+.2f}"
                     else:
-                        txt = f"{val:,.2f}" if val >= 10 else f"{val:.2f}"
+                        # Indikator lain pakai persentase YoY
+                        yoy_pct = (diff / val_prev) * 100 if val_prev != 0 else 0
+                        txt = f"{yoy_pct:+.2f}%"
                         
-                    if pd.isna(val_prev):
+                    # 2. Logika Warna (Hijau / Merah)
+                    if diff == 0:
                         col_z.append(0)
-                        col_text.append(txt)
+                    elif rule_naik_bagus:
+                        # Aturan Normal (Naik = Bagus/Hijau). Contoh: Ekspor, PMI
+                        col_z.append(1 if diff > 0 else -1)
                     else:
-                        diff = val - val_prev
-                        if diff == 0:
-                            col_z.append(0)
-                        elif rule_naik_bagus:
-                            col_z.append(1 if diff > 0 else -1) # 1=Hijau, -1=Merah
-                        else:
-                            col_z.append(1 if diff < 0 else -1) # Untuk inflasi, turun itu 1 (Hijau)
-                        col_text.append(txt)
+                        # Aturan Terbalik (Naik = Jelek/Merah). Contoh: Inflasi, Impor Konsumsi
+                        col_z.append(1 if diff < 0 else -1)
+                        
+                    col_text.append(txt)
             
             z_data.append(col_z)
             text_data.append(col_text)
