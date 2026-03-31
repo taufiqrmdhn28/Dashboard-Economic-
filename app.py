@@ -509,9 +509,8 @@ if df_target is not None:
         for col in indicator_cols:
             col_z, col_text = [], []
             
-            rule_naik_bagus = True
-            if "Inflasi" in col or "Nilai Tukar" in col or "Suku Bunga" in col:
-                rule_naik_bagus = False
+            # MENGAMBIL ATURAN LANGSUNG DARI DEEP DIVE (rules)
+            rule_naik_bagus = rules.get(col, True)
                 
             for d in dates_hm:
                 curr_row = df_makro[df_makro['Tanggal'] == d]
