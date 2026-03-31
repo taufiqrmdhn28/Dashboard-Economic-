@@ -493,53 +493,53 @@ if df_target is not None:
         
         z_data, text_data = [], []
         
-        # Menggunakan indicator_cols & rules dari Deep Dive
         for col in indicator_cols:
-            rule_naik_bagus = rules.get(col, True)
             col_z, col_text = [], []
             
+            # --- LOGIKA ATURAN WARNA (ANTI-TERBALIK) ---
+            # Default semua indikator: NAIK = BAGUS (HIJAU) 
+            # (Termasuk IKK, Ekspor, Impor Konsumsi, Kredit, dll)
+            rule_naik_bagus = True 
+            
+            # PENGECUALIAN: Hanya 3 indikator ini yang kalau NAIK = JELEK (MERAH)
+            if "Inflasi" in col or "Nilai Tukar" in col or "Suku Bunga" in col:
+                rule_naik_bagus = False
+            
             for d in dates_hm:
-                # 1. Ambil Nilai Bulan Ini (Misal: Feb 2026)
+                # 1. Tarik Nilai Bulan Ini
                 curr_row = df_makro[df_makro['Tanggal'] == d]
-                val_now = curr_row[col].values[0] if not curr_row.empty else np.nan
+                val = curr_row[col].values[0] if not curr_row.empty else np.nan
                 
-                # 2. Ambil Nilai TAHUN LALU di bulan yang sama (Misal: Feb 2025)
-                prev_year_date = d - pd.DateOffset(years=1)
-                prev_year_row = df_makro[(df_makro['Tanggal'].dt.year == prev_year_date.year) & (df_makro['Tanggal'].dt.month == prev_year_date.month)]
-                val_last_year = prev_year_row[col].values[0] if not prev_year_row.empty else np.nan
+                # 2. Tarik Nilai Bulan Tahun Lalu
+                prev_d = d - pd.DateOffset(years=1)
+                prev_row = df_makro[(df_makro['Tanggal'].dt.year == prev_d.year) & (df_makro['Tanggal'].dt.month == prev_d.month)]
+                val_prev = prev_row[col].values[0] if not prev_row.empty else np.nan
                 
-                if pd.isna(val_now) or pd.isna(val_last_year):
-                    col_z.append(0) # Abu-abu jika data kosong
+                if pd.isna(val) or pd.isna(val_prev):
+                    col_z.append(0) # Abu-abu jika data kosong / belum rilis
                     col_text.append("-")
                 else:
-                    # 3. Hitung Selisih dengan Tahun Lalu (Perbaikan / Perlambatan)
-                    diff_yoy = val_now - val_last_year
+                    diff = val - val_prev
                     
-                    # Logika Teks (Apa yang tertulis di dalam kotak)
-                    if "PMI" in col or "Inflasi" in col or "Suku Bunga" in col or "Nilai Tukar" in col or "Indeks Keyakinan Konsumen" in col:
-                        # Tampilkan nilai aslinya
-                        txt = f"{val_now:,.2f}" if val_now > 1000 else f"{val_now:.2f}"
-                    else:
-                        # Indikator lain tampilkan Persentase Pertumbuhan YoY
-                        yoy_pct = (diff_yoy / val_last_year) * 100 if val_last_year != 0 else 0
-                        txt = f"{yoy_pct:+.2f}%"
+                    # 3. Logika Teks (Nilai Sebenarnya Saja)
+                    txt = f"{val:,.2f}" if val > 1000 else f"{val:.2f}"
                         
-                    # 4. Logika Warna (Hijau/Merah) Berdasarkan YoY
-                    if diff_yoy == 0:
-                        col_z.append(0) # Abu-abu (Stagnan)
+                    # 4. Logika Warna (Perbaikan vs Perlambatan)
+                    if diff == 0:
+                        col_z.append(0) # Stagnan
                     elif rule_naik_bagus:
-                        # Naik = Perbaikan (Hijau), Turun = Perlambatan (Merah)
-                        col_z.append(1 if diff_yoy > 0 else -1)
+                        # Logika Normal (Naik = Hijau, Turun = Merah)
+                        col_z.append(1 if diff > 0 else -1) 
                     else:
-                        # Terbalik (Inflasi dll): Naik = Perlambatan (Merah), Turun = Perbaikan (Hijau)
-                        col_z.append(1 if diff_yoy < 0 else -1)
+                        # Logika Terbalik Khusus Inflasi/Kurs/Bunga (Turun = Hijau, Naik = Merah)
+                        col_z.append(1 if diff < 0 else -1) 
                         
                     col_text.append(txt)
             
             z_data.append(col_z)
             text_data.append(col_text)
             
-        # Bikin Grafik Heatmap Plotly
+        # 5. Render Grafik Heatmap
         fig_hm = go.Figure(data=go.Heatmap(
             z=z_data, x=x_labels, y=indicator_cols, text=text_data,
             texttemplate="%{text}", 
@@ -547,10 +547,9 @@ if df_target is not None:
             zmin=-1, zmax=1, showscale=False, xgap=3, ygap=3
         ))
         
-        # Penyesuaian tinggi agar indikator baru muat
         fig_hm.update_layout(
             height=150 + len(indicator_cols)*35,
-            margin=dict(l=200, r=20, t=30, b=20),
+            margin=dict(l=220, r=20, t=30, b=20),
             plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
             yaxis=dict(autorange="reversed", tickfont=dict(size=12, color='#333', weight='bold')) 
         )
@@ -558,9 +557,7 @@ if df_target is not None:
         st.plotly_chart(fig_hm, use_container_width=True)
         st.markdown("<p style='font-size: 11px; color: #666; text-align: center;'>Keterangan Warna: 🟩 Mengalami Perbaikan (YoY) | 🟥 Mengalami Perlambatan (YoY) | ⬜ Stagnan / Belum Rilis</p>", unsafe_allow_html=True)
     else:
-        st.info("Belum ada data bulanan untuk tahun 2025.")
-        
-    st.markdown('</div>', unsafe_allow_html=True)
+        st.info("Belum ada data bulanan untuk ditampilkan.")
         
     st.markdown('</div>', unsafe_allow_html=True)
     
