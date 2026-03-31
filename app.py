@@ -509,8 +509,13 @@ if df_target is not None:
         for col in indicator_cols:
             col_z, col_text = [], []
             
-            # MENGAMBIL ATURAN LANGSUNG DARI DEEP DIVE (rules)
-            rule_naik_bagus = rules.get(col, True)
+            # --- ATURAN WARNA MUTLAK ---
+            # Default semua indikator (Ekspor, Mobil, Kredit, Motor, dll): NAIK = HIJAU
+            rule_naik_bagus = True 
+            
+            # Pengecualian hanya untuk 3 ini: NAIK = MERAH
+            if "Inflasi" in col or "Nilai Tukar" in col or "Suku Bunga" in col:
+                rule_naik_bagus = False
                 
             for d in dates_hm:
                 curr_row = df_makro[df_makro['Tanggal'] == d]
@@ -526,17 +531,22 @@ if df_target is not None:
                 else:
                     diff = val - val_prev
                     
+                    # --- PERHITUNGAN TEKS ---
                     if "PMI" in col or "Inflasi" in col or "Suku Bunga" in col or "Nilai Tukar" in col or "Indeks Keyakinan Konsumen" in col:
                         txt = f"{val:,.2f}" if val > 1000 else f"{val:.2f}"
                     else:
+                        # Perhitungan YoY untuk Kredit, Motor, Mobil, Ekspor, dll
                         yoy_pct = (diff / abs(val_prev)) * 100 if val_prev != 0 else 0
                         txt = f"{yoy_pct:+.2f}%"
                         
+                    # --- EKSEKUSI WARNA HEATMAP ---
                     if diff == 0:
                         col_z.append(0) 
-                    elif rule_naik_bagus:
+                    elif rule_naik_bagus == True:
+                        # Sifat Mobil, Kredit, Motor: Kalau diff-nya positif (Naik), warnai Hijau (1)
                         col_z.append(1 if diff > 0 else -1) 
                     else:
+                        # Sifat Inflasi: Kalau diff-nya negatif (Turun), warnai Hijau (1)
                         col_z.append(1 if diff < 0 else -1) 
                         
                     col_text.append(txt)
