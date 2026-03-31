@@ -515,11 +515,12 @@ if df_target is not None:
                     diff = val - val_prev
                     
                     # 1. Logika Teks (Menampilkan Nilai Asli vs Persentase YoY)
-                    if "PMI" in col or "Inflasi" in col or "Suku Bunga" in col or "Nilai Tukar" in col:
+                    # ---> [UPDATE DI SINI: Menambahkan Indeks Keyakinan Konsumen] <---
+                    if "PMI" in col or "Inflasi" in col or "Suku Bunga" in col or "Nilai Tukar" in col or "Indeks Keyakinan Konsumen" in col:
                         # Tampilkan nilai aslinya (level), khusus Rupiah pakai format ribuan
                         txt = f"{val:,.2f}" if val > 1000 else f"{val:.2f}"
                     else:
-                        # Indikator lain tetap pakai persentase YoY
+                        # Indikator lain tetap pakai persentase YoY (Kredit Perbankan & Penjualan Motor otomatis masuk sini)
                         yoy_pct = (diff / val_prev) * 100 if val_prev != 0 else 0
                         txt = f"{yoy_pct:+.2f}%"
                         
@@ -527,7 +528,7 @@ if df_target is not None:
                     if diff == 0:
                         col_z.append(0)
                     elif rule_naik_bagus:
-                        # Aturan Normal (Naik = Bagus/Hijau). Contoh: Ekspor, PMI
+                        # Aturan Normal (Naik = Bagus/Hijau). Contoh: Ekspor, PMI, IKK, Kredit
                         col_z.append(1 if diff > 0 else -1)
                     else:
                         # Aturan Terbalik (Naik = Jelek/Merah). Contoh: Inflasi, Impor Konsumsi
@@ -546,6 +547,7 @@ if df_target is not None:
             zmin=-1, zmax=1, showscale=False, xgap=3, ygap=3
         ))
         
+        # ---> [UPDATE TAMPILAN: Menambah tinggi grafik agar 3 indikator baru tidak berdesakan] <---
         fig_hm.update_layout(
             height=150 + len(indicator_cols)*35,
             margin=dict(l=200, r=20, t=30, b=20),
