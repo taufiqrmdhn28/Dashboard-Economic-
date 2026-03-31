@@ -389,7 +389,8 @@ if df_target is not None:
         'Penjualan Mobil': True, 'Penjualan semen': True, 'Ekspor Barang': True, 
         'Impor Barang Modal': True, 'Impor Bahan Baku': True, 
         'Impor Barang Konsumsi': False, 'Inflasi': False, 
-        'Nilai Tukar terhadap Dolar AS': False, 'Suku Bunga': False
+        'Nilai Tukar terhadap Dolar AS': False, 'Suku Bunga': False, 
+        'Kredit Perbankan': False, 'Penjualan Motor': False, 'Indeks Keyakinan Konsumen': False
     }
 
     # Ambil list kolom indikator (kecuali kolom Tanggal)
