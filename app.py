@@ -487,26 +487,6 @@ if df_target is not None:
     # Filter data mulai Jan 2025
     df_hm = df_makro[df_makro['Tanggal'] >= '2025-01-01'].copy()
     
-    # --- KAMUS ATURAN WARNA (DIJAMIN LENGKAP & AKURAT) ---
-    # True  = Naik Bagus (Hijau), Turun Jelek (Merah)
-    # False = Naik Jelek (Merah), Turun Bagus (Hijau)
-    rules_heatmap = {
-        'PMI Manufaktur Negara Berkembang': True, 
-        'Jumlah Uang Yang Beredar': True, 
-        'Penjualan Mobil': True, 
-        'Penjualan semen': True, 
-        'Ekspor Barang': True, 
-        'Impor Barang Modal': True, 
-        'Impor Bahan Baku': True, 
-        'Impor Barang Konsumsi': True, 
-        'Kredit Perbankan': True, 
-        'Penjualan Motor': True, 
-        'Indeks Keyakinan Konsumen': True,
-        'Inflasi': False, 
-        'Nilai Tukar terhadap Dolar AS': False, 
-        'Suku Bunga': False
-    }
-
     if not df_hm.empty:
         dates_hm = df_hm['Tanggal'].tolist()
         x_labels = df_hm['Tanggal'].dt.strftime('%b %Y').tolist()
@@ -516,13 +496,17 @@ if df_target is not None:
         for col in indicator_cols:
             col_z, col_text = [], []
             
-            # Ambil aturan warna dari kamus (default True jika tidak ada)
-            rule_naik_bagus = rules_heatmap.get(col, True)
-            
+            # 1. Aturan Warna Mutlak
+            rule_naik_bagus = True # Default: Naik=Hijau, Turun=Merah
+            if "Inflasi" in col or "Nilai Tukar" in col or "Suku Bunga" in col:
+                rule_naik_bagus = False # Pengecualian: Naik=Merah, Turun=Hijau
+                
             for d in dates_hm:
+                # Nilai Bulan Ini
                 curr_row = df_makro[df_makro['Tanggal'] == d]
                 val = curr_row[col].values[0] if not curr_row.empty else np.nan
                 
+                # Nilai Bulan Tahun Lalu
                 prev_d = d - pd.DateOffset(years=1)
                 prev_row = df_makro[(df_makro['Tanggal'].dt.year == prev_d.year) & (df_makro['Tanggal'].dt.month == prev_d.month)]
                 val_prev = prev_row[col].values[0] if not prev_row.empty else np.nan
@@ -533,22 +517,20 @@ if df_target is not None:
                 else:
                     diff = val - val_prev
                     
-                    # 3. LOGIKA TEKS (Nilai Asli vs Persentase YoY)
+                    # 2. Logika Teks (Persen vs Nilai Asli)
                     if "PMI" in col or "Inflasi" in col or "Suku Bunga" in col or "Nilai Tukar" in col or "Indeks Keyakinan Konsumen" in col:
-                        # Tampilkan Nilai Asli (Level/Indeks)
                         txt = f"{val:,.2f}" if val > 1000 else f"{val:.2f}"
                     else:
-                        # Tampilkan Persentase YoY (pakai abs() untuk mencegah error tanda baca)
                         yoy_pct = (diff / abs(val_prev)) * 100 if val_prev != 0 else 0
                         txt = f"{yoy_pct:+.2f}%"
                         
-                    # 4. LOGIKA WARNA (Perbaikan vs Perlambatan)
+                    # 3. Logika Warna 
                     if diff == 0:
                         col_z.append(0) 
                     elif rule_naik_bagus:
-                        col_z.append(1 if diff > 0 else -1) # Aturan Normal: Naik = Hijau
+                        col_z.append(1 if diff > 0 else -1) # Naik=Hijau, Turun=Merah
                     else:
-                        col_z.append(1 if diff < 0 else -1) # Aturan Terbalik: Turun = Hijau (Khusus Inflasi/Kurs/Bunga)
+                        col_z.append(1 if diff < 0 else -1) # Turun=Hijau, Naik=Merah
                         
                     col_text.append(txt)
             
