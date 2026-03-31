@@ -496,42 +496,40 @@ if df_target is not None:
         for col in indicator_cols:
             col_z, col_text = [], []
             
-            # --- LOGIKA ATURAN WARNA (ANTI-TERBALIK) ---
-            # Default semua indikator: NAIK = BAGUS (HIJAU) 
-            # (Termasuk IKK, Ekspor, Impor Konsumsi, Kredit, dll)
+            # --- LOGIKA ATURAN WARNA ---
             rule_naik_bagus = True 
-            
-            # PENGECUALIAN: Hanya 3 indikator ini yang kalau NAIK = JELEK (MERAH)
             if "Inflasi" in col or "Nilai Tukar" in col or "Suku Bunga" in col:
                 rule_naik_bagus = False
             
             for d in dates_hm:
-                # 1. Tarik Nilai Bulan Ini
                 curr_row = df_makro[df_makro['Tanggal'] == d]
                 val = curr_row[col].values[0] if not curr_row.empty else np.nan
                 
-                # 2. Tarik Nilai Bulan Tahun Lalu
                 prev_d = d - pd.DateOffset(years=1)
                 prev_row = df_makro[(df_makro['Tanggal'].dt.year == prev_d.year) & (df_makro['Tanggal'].dt.month == prev_d.month)]
                 val_prev = prev_row[col].values[0] if not prev_row.empty else np.nan
                 
                 if pd.isna(val) or pd.isna(val_prev):
-                    col_z.append(0) # Abu-abu jika data kosong / belum rilis
+                    col_z.append(0) 
                     col_text.append("-")
                 else:
                     diff = val - val_prev
                     
-                    # 3. Logika Teks (Nilai Sebenarnya Saja)
-                    txt = f"{val:,.2f}" if val > 1000 else f"{val:.2f}"
+                    # 3. LOGIKA TEKS (PERBAIKAN: Persentase vs Nilai Asli)
+                    if "PMI" in col or "Inflasi" in col or "Suku Bunga" in col or "Nilai Tukar" in col or "Indeks Keyakinan Konsumen" in col:
+                        # Tampilkan nilai aslinya untuk indikator indeks/level
+                        txt = f"{val:,.2f}" if val > 1000 else f"{val:.2f}"
+                    else:
+                        # Tampilkan Persentase YoY untuk indikator lainnya
+                        yoy_pct = (diff / val_prev) * 100 if val_prev != 0 else 0
+                        txt = f"{yoy_pct:+.2f}%"
                         
-                    # 4. Logika Warna (Perbaikan vs Perlambatan)
+                    # 4. LOGIKA WARNA 
                     if diff == 0:
-                        col_z.append(0) # Stagnan
+                        col_z.append(0) 
                     elif rule_naik_bagus:
-                        # Logika Normal (Naik = Hijau, Turun = Merah)
                         col_z.append(1 if diff > 0 else -1) 
                     else:
-                        # Logika Terbalik Khusus Inflasi/Kurs/Bunga (Turun = Hijau, Naik = Merah)
                         col_z.append(1 if diff < 0 else -1) 
                         
                     col_text.append(txt)
@@ -539,11 +537,10 @@ if df_target is not None:
             z_data.append(col_z)
             text_data.append(col_text)
             
-        # 5. Render Grafik Heatmap
         fig_hm = go.Figure(data=go.Heatmap(
             z=z_data, x=x_labels, y=indicator_cols, text=text_data,
             texttemplate="%{text}", 
-            colorscale=[[0.0, '#e74c3c'], [0.5, '#ecf0f1'], [1.0, '#2ecc71']], # Merah, Abu-abu, Hijau
+            colorscale=[[0.0, '#e74c3c'], [0.5, '#ecf0f1'], [1.0, '#2ecc71']], 
             zmin=-1, zmax=1, showscale=False, xgap=3, ygap=3
         ))
         
