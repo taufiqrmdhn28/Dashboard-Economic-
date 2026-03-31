@@ -385,12 +385,20 @@ if df_target is not None:
     
     # Rules: True = Naik Bagus (Hijau), False = Turun Bagus (Hijau)
     rules = {
-        'PMI Manufaktur Negara Berkembang': True, 'Jumlah Uang Yang Beredar': True, 
-        'Penjualan Mobil': True, 'Penjualan semen': True, 'Ekspor Barang': True, 
-        'Impor Barang Modal': True, 'Impor Bahan Baku': True, 
-        'Impor Barang Konsumsi': False, 'Inflasi': False, 
-        'Nilai Tukar terhadap Dolar AS': False, 'Suku Bunga': False, 
-        'Kredit Perbankan': False, 'Penjualan Motor': False, 'Indeks Keyakinan Konsumen': False
+        'PMI Manufaktur Negara Berkembang': True, 
+        'Jumlah Uang Yang Beredar': True, 
+        'Penjualan Mobil': True, 
+        'Penjualan semen': True, 
+        'Ekspor Barang': True, 
+        'Impor Barang Modal': True, 
+        'Impor Bahan Baku': True, 
+        'Impor Barang Konsumsi': True, 
+        'Kredit Perbankan': True, 
+        'Penjualan Motor': True, 
+        'Indeks Keyakinan Konsumen': True,
+        'Inflasi': False, 
+        'Nilai Tukar terhadap Dolar AS': False, 
+        'Suku Bunga': False
     }
 
     # Ambil list kolom indikator (kecuali kolom Tanggal)
@@ -431,7 +439,13 @@ if df_target is not None:
         if not row_yoy.empty and pd.notna(row_yoy.iloc[0][col]):
             val_yoy = row_yoy.iloc[0][col]
             yoy = ((val - val_yoy)/val_yoy)*100 if val_yoy!=0 else 0
-            yoy_str = f"YoY: {yoy:+.2f}%"
+            
+            # --- PERBAIKAN: Teks YoY khusus indikator indeks/level ---
+            if "PMI" in col or "Inflasi" in col or "Suku Bunga" in col or "Nilai Tukar" in col or "Indeks Keyakinan Konsumen" in col:
+                 yoy_val = val - val_yoy
+                 yoy_str = f"YoY: {yoy_val:+.2f}"
+            else:
+                 yoy_str = f"YoY: {yoy:+.2f}%"
         else:
             yoy = 0
             yoy_str = "YoY: -"
@@ -484,7 +498,6 @@ if df_target is not None:
     st.markdown("### 🗺️ Heatmap Tracker (Tren YoY)")
     st.markdown('<div class="glass-card">', unsafe_allow_html=True)
     
-    # Filter data mulai Jan 2025
     df_hm = df_makro[df_makro['Tanggal'] >= '2025-01-01'].copy()
     
     if not df_hm.empty:
@@ -496,17 +509,14 @@ if df_target is not None:
         for col in indicator_cols:
             col_z, col_text = [], []
             
-            # 1. Aturan Warna Mutlak
-            rule_naik_bagus = True # Default: Naik=Hijau, Turun=Merah
+            rule_naik_bagus = True
             if "Inflasi" in col or "Nilai Tukar" in col or "Suku Bunga" in col:
-                rule_naik_bagus = False # Pengecualian: Naik=Merah, Turun=Hijau
+                rule_naik_bagus = False
                 
             for d in dates_hm:
-                # Nilai Bulan Ini
                 curr_row = df_makro[df_makro['Tanggal'] == d]
                 val = curr_row[col].values[0] if not curr_row.empty else np.nan
                 
-                # Nilai Bulan Tahun Lalu
                 prev_d = d - pd.DateOffset(years=1)
                 prev_row = df_makro[(df_makro['Tanggal'].dt.year == prev_d.year) & (df_makro['Tanggal'].dt.month == prev_d.month)]
                 val_prev = prev_row[col].values[0] if not prev_row.empty else np.nan
@@ -517,20 +527,18 @@ if df_target is not None:
                 else:
                     diff = val - val_prev
                     
-                    # 2. Logika Teks (Persen vs Nilai Asli)
                     if "PMI" in col or "Inflasi" in col or "Suku Bunga" in col or "Nilai Tukar" in col or "Indeks Keyakinan Konsumen" in col:
                         txt = f"{val:,.2f}" if val > 1000 else f"{val:.2f}"
                     else:
                         yoy_pct = (diff / abs(val_prev)) * 100 if val_prev != 0 else 0
                         txt = f"{yoy_pct:+.2f}%"
                         
-                    # 3. Logika Warna 
                     if diff == 0:
                         col_z.append(0) 
                     elif rule_naik_bagus:
-                        col_z.append(1 if diff > 0 else -1) # Naik=Hijau, Turun=Merah
+                        col_z.append(1 if diff > 0 else -1) 
                     else:
-                        col_z.append(1 if diff < 0 else -1) # Turun=Hijau, Naik=Merah
+                        col_z.append(1 if diff < 0 else -1) 
                         
                     col_text.append(txt)
             
