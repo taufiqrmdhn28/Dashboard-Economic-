@@ -267,24 +267,37 @@ if df_target is not None:
     st.markdown("<br>", unsafe_allow_html=True)
 
     # ==========================================
-    # --- ATURAN GLOBAL WARNA (WAJIB DI SINI) ---
-    # ==========================================
-    ATURAN_WARNA = {
-        'PMI Manufaktur Negara Berkembang': True, 
-        'Jumlah Uang Yang Beredar': True, 
-        'Penjualan Mobil': True, 
-        'Penjualan semen': True, 
-        'Ekspor Barang': True, 
-        'Impor Barang Modal': True, 
-        'Impor Bahan Baku': True, 
-        'Kredit Perbankan': True,
-        'Penjualan Motor': True,
-        'Indeks Keyakinan Konsumen': True, 
-        'Impor Barang Konsumsi': True, 
-        'Inflasi': False, 
-        'Nilai Tukar terhadap Dolar AS': False, 
-        'Suku Bunga': False
-    }
+# --- ATURAN GLOBAL WARNA (WAJIB DI SINI) ---
+# ==========================================
+ATURAN_WARNA = {
+    'PMI Manufaktur Negara Berkembang': True, 
+    'Jumlah Uang Yang Beredar': True, 
+    'Penjualan Mobil': True, 
+    'Penjualan semen': True, 
+    'Ekspor Barang': True, 
+    'Impor Barang Modal': True, 
+    'Impor Bahan Baku': True, 
+    'Kredit Perbankan': True,
+    'Penjualan Motor': True,
+    'Indeks Keyakinan Konsumen': True, 
+    'Impor Barang Konsumsi': True, 
+    'Inflasi': False, 
+    'Nilai Tukar terhadap Dolar AS': False, 
+    'Suku Bunga': False
+}
+
+# ==========================================
+# --- DEFINISI INDIKATOR LEVEL (FIX BUG) ---
+# ==========================================
+LEVEL_INDICATORS = [
+    "PMI",
+    "Inflasi",
+    "Suku Bunga",
+    "Nilai Tukar",
+    "Indeks Keyakinan Konsumen",
+    "Kredit Perbankan",
+    "Penjualan Motor"
+]
 
     # ==========================================
     # --- DEEP DIVE (FIXED YoY & MtM FORMATTING) ---
@@ -332,7 +345,7 @@ if df_target is not None:
         # --- AMBIL ATURAN DARI ATURAN_WARNA ---
         rule_naik_bagus = ATURAN_WARNA.get(col, True)
         
-        is_level_indicator = any(k in col for k in ["PMI", "Inflasi", "Suku Bunga", "Nilai Tukar", "Indeks Keyakinan Konsumen"])
+        is_level_indicator = any(k in col for k in LEVEL_INDICATORS)
 
         # FORMAT TAMPILAN DEEP DIVE
         if is_level_indicator:
@@ -388,7 +401,7 @@ if df_target is not None:
             
             # --- AMBIL ATURAN DARI SUMBER YANG SAMA DENGAN DEEP DIVE ---
             rule_naik_bagus = ATURAN_WARNA.get(col, True)
-            is_level_indicator = any(k in col for k in ["PMI", "Inflasi", "Suku Bunga", "Nilai Tukar", "Indeks Keyakinan Konsumen"])
+            is_level_indicator = any(k in col for k in LEVEL_INDICATORS)
                 
             for d in dates_hm:
                 curr_row = df_makro[df_makro['Tanggal'] == d]
