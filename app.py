@@ -99,12 +99,12 @@ def calculate_econometric_projection(df_historical, data_2025_list, target_2026)
     col_target = 'RGDP_growth' if 'RGDP_growth' in df_h.columns else df_h.columns[1]
     series_hist = df_h[col_target].dropna()
 
-    idx_2025 = pd.date_range(start='2025-03-31', periods=4, freq='Q')
+    idx_2025 = pd.date_range(start='2025-03-31', periods=4, freq='QE')
     series_2025 = pd.Series(data_2025_list, index=idx_2025)
 
     full_series = pd.concat([series_hist, series_2025])
     full_series = full_series.sort_index()
-    full_series.index = pd.DatetimeIndex(full_series.index).to_period('Q')
+    full_series.index = pd.DatetimeIndex(full_series.index).to_period('Q-DEC')
 
     try:
         model = ExponentialSmoothing(
