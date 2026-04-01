@@ -369,7 +369,7 @@ if df_target is not None:
         """
         with cols[i%4]: st.markdown(html, unsafe_allow_html=True)
 
-    # ==========================================
+   # ==========================================
     # --- HEATMAP BULANAN (YOY TRACKER) ---
     # ==========================================
     st.markdown("### 🗺️ Heatmap Tracker (Tren YoY)")
@@ -384,7 +384,7 @@ if df_target is not None:
         for col in indicator_cols:
             col_z, col_text = [], []
             
-            # AMBIL ATURAN DARI KAMUS SAKTI
+            # AMBIL ATURAN DARI KAMUS SAKTI (Naik=Hijau, Turun=Merah)
             rule_naik_bagus = ATURAN_WARNA.get(col.strip(), True)
             
             is_level_indicator = any(k in col for k in ["PMI", "Inflasi", "Suku Bunga", "Nilai Tukar", "Indeks Keyakinan Konsumen"])
@@ -393,34 +393,46 @@ if df_target is not None:
                 curr_row = df_makro[df_makro['Tanggal'] == d]
                 val = curr_row[col].values[0] if not curr_row.empty else np.nan
                 
+                # Tarik Data Tahun Lalu
                 prev_d = d - pd.DateOffset(years=1)
                 prev_row = df_makro[(df_makro['Tanggal'].dt.year == prev_d.year) & (df_makro['Tanggal'].dt.month == prev_d.month)]
                 val_prev = prev_row[col].values[0] if not prev_row.empty else np.nan
+                
+                # Tarik Data Dua Tahun Lalu (Untuk membandingkan pertumbuhan YoY tahun lalu)
+                prev_prev_d = prev_d - pd.DateOffset(years=1)
+                prev_prev_row = df_makro[(df_makro['Tanggal'].dt.year == prev_prev_d.year) & (df_makro['Tanggal'].dt.month == prev_prev_d.month)]
+                val_prev_prev = prev_prev_row[col].values[0] if not prev_prev_row.empty else np.nan
                 
                 if pd.isna(val) or pd.isna(val_prev):
                     col_z.append(0) 
                     col_text.append("-")
                 else:
-                    diff = val - val_prev
-                    
-                    # 1. HITUNG PERTUMBUHAN (YOY) UNTUK TEKS DAN WARNA
                     if is_level_indicator:
-                        yoy_calc = diff  # Untuk indikator level, pertumbuhannya adalah selisih poin
+                        # 1. INDIKATOR LEVEL (PMI, IKK, dll)
+                        # Teks: Nilai Asli
                         txt = f"{val:,.2f}" if val > 1000 else f"{val:.2f}"
+                        # Warna: Selisih poin tahun ini vs tahun lalu
+                        diff = val - val_prev
                     else:
-                        # KUNCI: Menghitung persentase pertumbuhan YoY
-                        yoy_calc = (diff / abs(val_prev)) * 100 if val_prev != 0 else 0
-                        txt = f"{yoy_calc:+.2f}%"
+                        # 2. INDIKATOR PERTUMBUHAN (Ekspor, Mobil, Kredit, Motor, dll)
+                        # Teks: Pertumbuhan YoY Tahun Ini
+                        yoy_curr = (val - val_prev) / abs(val_prev) * 100 if val_prev != 0 else 0
+                        txt = f"{yoy_curr:+.2f}%"
                         
-                    # 2. WARNA MUTLAK BERDASARKAN HASIL YOY (BUKAN NILAI DATA MENTAH)
-                    if yoy_calc == 0: 
+                        # Warna: Selisih Momentum (YoY Tahun Ini dikurangi YoY Tahun Lalu)
+                        if pd.isna(val_prev_prev):
+                            diff = yoy_curr # Default jika data 2 tahun lalu tidak ada
+                        else:
+                            yoy_prev = (val_prev - val_prev_prev) / abs(val_prev_prev) * 100 if val_prev_prev != 0 else 0
+                            diff = yoy_curr - yoy_prev
+                        
+                    # EKSEKUSI WARNA MUTLAK
+                    if diff == 0: 
                         col_z.append(0) 
                     elif rule_naik_bagus: 
-                        # Jika aturan NAIK = HIJAU, dan pertumbuhan (yoy_calc) positif -> Hijau (1), negatif -> Merah (-1)
-                        col_z.append(1 if yoy_calc > 0 else -1) 
+                        col_z.append(1 if diff > 0 else -1) # Perbaikan Momentum -> Hijau, Melambat -> Merah
                     else: 
-                        # Jika aturan NAIK = MERAH, dan pertumbuhan (yoy_calc) negatif -> Hijau (1), positif -> Merah (-1)
-                        col_z.append(1 if yoy_calc < 0 else -1) 
+                        col_z.append(1 if diff < 0 else -1) # Perbaikan Momentum -> Merah (Khusus Inflasi, dll)
                         
                     col_text.append(txt)
             
@@ -441,7 +453,7 @@ if df_target is not None:
             yaxis=dict(autorange="reversed", tickfont=dict(size=12, color='#333', weight='bold')) 
         )
         st.plotly_chart(fig_hm, use_container_width=True)
-        st.markdown("<p style='font-size: 11px; color: #666; text-align: center;'>Keterangan Warna: 🟩 Mengalami Perbaikan (YoY) | 🟥 Mengalami Perlambatan (YoY) | ⬜ Stagnan / Belum Rilis</p>", unsafe_allow_html=True)
+        st.markdown("<p style='font-size: 11px; color: #666; text-align: center;'>Keterangan Warna: 🟩 Mengalami Perbaikan Momentum (vs Tahun Lalu) | 🟥 Mengalami Perlambatan Momentum | ⬜ Stagnan / Belum Rilis</p>", unsafe_allow_html=True)
     else:
         st.info("Belum ada data bulanan untuk ditampilkan.")
     st.markdown('</div>', unsafe_allow_html=True)
