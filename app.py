@@ -390,6 +390,7 @@ if df_target is not None:
                 curr_row = df_makro[df_makro['Tanggal'] == d]
                 val = curr_row[col].values[0] if not curr_row.empty else np.nan
                 
+                # --- KEMBALI KE LOGIKA YOY MUTLAK ---
                 prev_d = d - pd.DateOffset(years=1)
                 prev_row = df_makro[(df_makro['Tanggal'].dt.year == prev_d.year) & (df_makro['Tanggal'].dt.month == prev_d.month)]
                 val_prev = prev_row[col].values[0] if not prev_row.empty else np.nan
@@ -400,16 +401,21 @@ if df_target is not None:
                 else:
                     diff = val - val_prev
                     
-                    # FORMAT TAMPILAN HEATMAP
                     if is_level_indicator:
                         txt = f"{val:,.2f}" if val > 1000 else f"{val:.2f}"
                     else:
+                        # Kredit & Motor masuk ke sini (sifat sama kayak Ekspor)
                         yoy_pct = (diff / abs(val_prev)) * 100 if val_prev != 0 else 0
                         txt = f"{yoy_pct:+.2f}%"
                         
-                    if diff == 0: col_z.append(0) 
-                    elif rule_naik_bagus: col_z.append(1 if diff > 0 else -1) 
-                    else: col_z.append(1 if diff < 0 else -1) 
+                    # LOGIKA WARNA YOY MUTLAK
+                    if diff == 0: 
+                        col_z.append(0) 
+                    elif rule_naik_bagus: 
+                        # 9.37 vs 10.30 -> diff negatif -> masuk ke else -> warnanya MERAH (-1)
+                        col_z.append(1 if diff > 0 else -1) 
+                    else: 
+                        col_z.append(1 if diff < 0 else -1) 
                         
                     col_text.append(txt)
             
@@ -418,7 +424,8 @@ if df_target is not None:
             
         fig_hm = go.Figure(data=go.Heatmap(
             z=z_data, x=x_labels, y=indicator_cols, text=text_data,
-            texttemplate="%{text}",
+            texttemplate="<b>%{text}</b>", 
+            textfont=dict(size=14, color='#111'),
             colorscale=[[0.0, '#e74c3c'], [0.5, '#ecf0f1'], [1.0, '#2ecc71']], 
             zmin=-1, zmax=1, showscale=False, xgap=3, ygap=3
         ))
