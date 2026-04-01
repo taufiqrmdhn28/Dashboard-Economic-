@@ -11,13 +11,11 @@ file_adb = "INO_02022026.xlsx"
 # ==========================================
 # 0. KONFIGURASI API KEY (SECURE)
 # ==========================================
-# Cek apakah ada di Secrets (Cloud) atau pakai Fallback (Local)
 try:
     USER_API_KEY = st.secrets["GEMINI_API_KEY"]
 except:
-    # Ini hanya untuk jaga-jaga kalau dijalankan di laptop sendiri tanpa secrets
-    # Tapi JANGAN upload key asli ke GitHub lagi ya
     USER_API_KEY = ""
+
 # ==========================================
 # 1. SETUP & DESIGN
 # ==========================================
@@ -66,18 +64,14 @@ def load_data():
 df_target, df_triwulan, df_makro, df_hist_gdp = load_data()
 
 # ==========================================
-# 2.5. DATA LOADING (ONEDRIVE HARIAN)
+# 2.5. DATA LOADING (GOOGLE SHEETS HARIAN)
 # ==========================================
-@st.cache_data(ttl=3600) # Refresh tiap jam
+@st.cache_data(ttl=3600)
 def load_daily_data():
     try:
-        # Trik Baru: Kita ganti "format=csv" menjadi "format=xlsx"
         url = "https://docs.google.com/spreadsheets/d/1wM0lHYqNTgf4Jo4AMCDakWnwqF1lVg-7/export?format=xlsx&gid=1981545536"
-        
-        # Kita kembali pakai read_excel. Ini 100% kebal dari error "Kolom Hantu"
         df_daily = pd.read_excel(url, engine="openpyxl")
         
-        # Asumsi kolom pertama adalah Tanggal
         date_col = 'Tanggal' if 'Tanggal' in df_daily.columns else df_daily.columns[0]
         df_daily[date_col] = pd.to_datetime(df_daily[date_col])
         df_daily = df_daily.sort_values(by=date_col)
@@ -93,16 +87,8 @@ df_daily, date_col_daily = load_daily_data()
 # 3. ROBUST ECONOMETRIC ENGINE (HOLT-WINTERS)
 # ==========================================
 def calculate_econometric_projection(df_historical, data_2025_list, target_2026):
-    """
-    Menggunakan Holt-Winters Exponential Smoothing.
-    1. Gabungkan Data Historis (2000-2024) + Data 2025 (User).
-    2. Tangkap Pola Musiman (Seasonality) dan Tren.
-    3. Forecast 2026.
-    """
-    # 1. PREPARE HISTORICAL DATA (2000 - 2024)
     df_h = df_historical.copy()
     try:
-        # Fix date parsing
         if pd.api.types.is_numeric_dtype(df_h.iloc[:, 0]):
              df_h.iloc[:, 0] = pd.to_datetime(df_h.iloc[:, 0], unit='D', origin='1899-12-30')
         else:
@@ -113,85 +99,49 @@ def calculate_econometric_projection(df_historical, data_2025_list, target_2026)
     col_target = 'RGDP_growth' if 'RGDP_growth' in df_h.columns else df_h.columns[1]
     series_hist = df_h[col_target].dropna()
 
-    # 2. GABUNGKAN DENGAN DATA 2025 (USER INPUT)
-    # Asumsi data 2025 berurutan Q1, Q2, Q3, Q4
-    # Kita buat index tanggal untuk 2025
     idx_2025 = pd.date_range(start='2025-03-31', periods=4, freq='Q')
     series_2025 = pd.Series(data_2025_list, index=idx_2025)
 
-    # Gabung menjadi satu Time Series utuh
     full_series = pd.concat([series_hist, series_2025])
-
-    # Pastikan data urut dan punya frequency Quarter
     full_series = full_series.sort_index()
     full_series.index = pd.DatetimeIndex(full_series.index).to_period('Q')
 
-    # 3. MODELING (HOLT-WINTERS)
-    # trend='add' (pertumbuhan linear), seasonal='add' (pola musiman tetap), seasonal_periods=4 (kuartalan)
     try:
         model = ExponentialSmoothing(
-            full_series,
-            trend='add',
-            seasonal='add',
-            seasonal_periods=4,
-            damped_trend=True # Agar tidak overshoot terlalu jauh
+            full_series, trend='add', seasonal='add', seasonal_periods=4, damped_trend=True
         ).fit()
 
-        # 4. FORECAST 2026
         forecast_2026 = model.forecast(4)
-
-        # Validasi Hasil (Sanity Check)
-        # Jika hasil forecast terlalu jauh dari target pemerintah (misal > 7% atau < 3%),
-        # kita lakukan 'Gravity Pull' sedikit ke arah target agar politis aman,
-        # TAPI tetap mempertahankan pola naik-turun musiman.
-
         final_preds = []
         for val in forecast_2026:
-            # Batasi range wajar ekonomi RI
             clipped_val = np.clip(val, 4.5, 5.8)
             final_preds.append(clipped_val)
-
         return list(final_preds)
-
     except Exception as e:
-        # Fallback jika model gagal (jarang terjadi)
         return [5.1, 5.3, 5.2, 5.4]
 
 # ==========================================
-# 4. EXECUTION
+# 4. EXECUTION DASHBOARD PDB
 # ==========================================
-
 if df_target is not None:
-
-    # --- A. DATA 2025 (DARI EXCEL USER - SINGLE SOURCE OF TRUTH) ---
     t_2025 = df_target[df_target['Tahun'] == 2025]['Target'].values[0]
     row_2025 = df_triwulan[df_triwulan['Tahun'] == 2025].iloc[0]
 
-    real_2025 = []
-    now_2025 = []
-    combined_2025 = [] # Untuk input ke model
-
+    real_2025, now_2025, combined_2025 = [], [], []
     for q in ['Q1', 'Q2', 'Q3', 'Q4']:
         r = row_2025.get(f'Realisasi {q}', np.nan)
         n = row_2025.get(f'Nowcasting {q}', np.nan)
-
         real_2025.append(r if pd.notna(r) else None)
         now_2025.append(n if pd.notna(n) else None)
-
-        # Priority Value untuk Model Training: Realisasi > Nowcast > 5.0 (Default)
         val = r if pd.notna(r) else (n if pd.notna(n) else 5.0)
         combined_2025.append(val)
 
-    # --- B. DATA 2026 (HOLT-WINTERS FORECAST) ---
     t_2026 = df_target[df_target['Tahun'] == 2026]['Target'].values[0] if 2026 in df_target['Tahun'].values else 5.4
-
-    # Hitung Proyeksi
     preds_2026 = calculate_econometric_projection(df_hist_gdp, combined_2025, t_2026)
 
     real_2026 = [None, None, None, None]
     now_2026 = preds_2026
 
-    # --- C. DASHBOARD UI ---
     st.sidebar.header("⚙️ Control Panel")
     selected_view = st.sidebar.selectbox("Pilih Periode Monitoring", ["2025", "2026", "Full Trajectory"])
 
@@ -200,59 +150,35 @@ if df_target is not None:
 
     if selected_view == "2025":
         final_x = ['Q1', 'Q2', 'Q3', 'Q4']
-        final_real, final_now = real_2025, now_2025
-        final_target = [t_2025]*4
-        vals = [r if r is not None else n for r, n in zip(real_2025, now_2025)]
-        vals = [v for v in vals if v is not None]
-        current_avg = np.mean(vals) if vals else 0
-        current_target = t_2025
-
+        final_real, final_now, final_target = real_2025, now_2025, [t_2025]*4
+        vals = [v for v in [r if r is not None else n for r, n in zip(real_2025, now_2025)] if v is not None]
+        current_avg, current_target = np.mean(vals) if vals else 0, t_2025
     elif selected_view == "2026":
         final_x = ['Q1', 'Q2', 'Q3', 'Q4']
-        final_real, final_now = real_2026, now_2026
-        final_target = [t_2026]*4
-        current_avg = np.mean(now_2026)
-        current_target = t_2026
-
-    else: # Full Trajectory
-        # Custom Logic untuk Full Trajectory (2010 - 2026)
+        final_real, final_now, final_target = real_2026, now_2026, [t_2026]*4
+        current_avg, current_target = np.mean(now_2026), t_2026
+    else: 
         df_h = df_hist_gdp.copy()
         try:
-            if pd.api.types.is_numeric_dtype(df_h.iloc[:, 0]):
-                 df_h.iloc[:, 0] = pd.to_datetime(df_h.iloc[:, 0], unit='D', origin='1899-12-30')
-            else:
-                 df_h.iloc[:, 0] = pd.to_datetime(df_h.iloc[:, 0])
+            if pd.api.types.is_numeric_dtype(df_h.iloc[:, 0]): df_h.iloc[:, 0] = pd.to_datetime(df_h.iloc[:, 0], unit='D', origin='1899-12-30')
+            else: df_h.iloc[:, 0] = pd.to_datetime(df_h.iloc[:, 0])
         except: pass
         df_h.set_index(df_h.columns[0], inplace=True)
         col_target = 'RGDP_growth' if 'RGDP_growth' in df_h.columns else df_h.columns[1]
         series_hist = df_h[col_target].dropna()
-        
-        # 1. Filter data historis mulai dari tahun 2010 ke atas
         series_hist = series_hist[series_hist.index >= '2010-01-01']
         
-        # Format sumbu X jadi '2010-Q1', '2010-Q2', dsb.
-        try:
-            x_hist = [f"{d.year}-Q{(d.month-1)//3 + 1}" for d in series_hist.index]
-        except:
-            x_hist = [str(i) for i in range(len(series_hist))]
+        try: x_hist = [f"{d.year}-Q{(d.month-1)//3 + 1}" for d in series_hist.index]
+        except: x_hist = [str(i) for i in range(len(series_hist))]
             
         y_hist = series_hist.values.tolist()
-        
         x_2025 = ['2025-Q1', '2025-Q2', '2025-Q3', '2025-Q4']
         x_2026 = ['2026-Q1', '2026-Q2', '2026-Q3', '2026-Q4']
         
-        # 2. Garis Realisasi (Gabungan 2010 Historis + 2025 Berjalan)
-        full_x_real = x_hist + x_2025
-        full_y_real = y_hist + combined_2025
-        
-        # 3. Garis Proyeksi (Mulai dari ujung data 2025 ke 2026 supaya grafiknya tersambung)
-        full_x_proj = [x_2025[-1]] + x_2026
-        full_y_proj = [combined_2025[-1]] + preds_2026
-        
-        current_avg = np.mean(preds_2026) # Acuan status rata-rata difokuskan ke 2026
-        current_target = t_2026
+        full_x_real, full_y_real = x_hist + x_2025, y_hist + combined_2025
+        full_x_proj, full_y_proj = [x_2025[-1]] + x_2026, [combined_2025[-1]] + preds_2026
+        current_avg, current_target = np.mean(preds_2026), t_2026
 
-    # CHART
     title_text = f"Outlook Ekonomi: {selected_view}"
     if selected_view == "2026": title_text += " (Proyeksi Holt-Winters)"
     elif selected_view == "Full Trajectory": title_text = "Historis & Proyeksi Ekonomi (2010 - 2026)"
@@ -261,45 +187,18 @@ if df_target is not None:
     fig = go.Figure()
 
     if selected_view == "Full Trajectory":
-        # Line Realisasi (2010 - 2025) -> Warna Kuning (Solid)
-        fig.add_trace(go.Scatter(
-            x=full_x_real, y=full_y_real, name='Realisasi (2010-2025)',
-            mode='lines', line=dict(color='#f1c40f', width=2.5) # #f1c40f adalah kuning
-        ))
-        
-        # Line Proyeksi (2026) -> Warna Hijau (Putus-putus)
-        fig.add_trace(go.Scatter(
-            x=full_x_proj, y=full_y_proj, name='Proyeksi 2026',
-            mode='lines', line=dict(color='#27ae60', width=2.5, dash='dot') # #27ae60 adalah hijau
-        ))
-        
-        # Layout Full Trajectory (Tanpa Target APBN)
+        fig.add_trace(go.Scatter(x=full_x_real, y=full_y_real, name='Realisasi (2010-2025)', mode='lines', line=dict(color='#f1c40f', width=2.5)))
+        fig.add_trace(go.Scatter(x=full_x_proj, y=full_y_proj, name='Proyeksi 2026', mode='lines', line=dict(color='#27ae60', width=2.5, dash='dot')))
         fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', legend=dict(orientation="h", y=1.1), height=450)
-        
     else:
-        # Layout untuk 2025 dan 2026 (Tetap seperti semula)
-        fig.add_trace(go.Bar(
-            x=final_x, y=final_real, name='Realisasi (BPS)', marker_color='#2980b9',
-            text=[f"{v:.2f}%" if v else "" for v in final_real], textposition='auto'
-        ))
-
+        fig.add_trace(go.Bar(x=final_x, y=final_real, name='Realisasi (BPS)', marker_color='#2980b9', text=[f"{v:.2f}%" if v else "" for v in final_real], textposition='auto'))
         if selected_view == "2026":
-            fig.add_trace(go.Scatter(
-                x=final_x, y=final_now, name='Proyeksi Model (Seasonal)',
-                mode='lines+markers', line=dict(color='#f39c12', width=4, shape='spline'),
-                text=[f"{v:.2f}%" for v in final_now], textposition='top center'
-            ))
+            fig.add_trace(go.Scatter(x=final_x, y=final_now, name='Proyeksi Model (Seasonal)', mode='lines+markers', line=dict(color='#f39c12', width=4, shape='spline'), text=[f"{v:.2f}%" for v in final_now], textposition='top center'))
         else:
-            fig.add_trace(go.Bar(
-                x=final_x, y=final_now, name='Nowcasting', marker_color='#f39c12',
-                text=[f"{v:.2f}%" if v else "" for v in final_now], textposition='auto'
-            ))
-
-        # Garis Target APBN HANYA muncul di 2025 dan 2026
+            fig.add_trace(go.Bar(x=final_x, y=final_now, name='Nowcasting', marker_color='#f39c12', text=[f"{v:.2f}%" if v else "" for v in final_now], textposition='auto'))
         fig.add_trace(go.Scatter(x=final_x, y=final_target, name='Target APBN', mode='lines', line=dict(color='#c0392b', width=3, dash='dash')))
         fig.update_layout(barmode='group', plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', legend=dict(orientation="h", y=1.1), height=450)
 
-    # Render Metric dan Grafiknya
     c1, c2, c3 = st.columns(3)
     c1.metric("Target Acuan", f"{current_target}%")
     gap = current_avg - current_target
@@ -322,12 +221,10 @@ if df_target is not None:
         
         idx = 0
         for col in daily_indicators:
-            if col not in df_daily.columns:
-                continue
+            if col not in df_daily.columns: continue
                 
             valid_series = df_daily[[date_col_daily, col]].dropna()
-            if valid_series.empty:
-                continue
+            if valid_series.empty: continue
                 
             latest_row = valid_series.iloc[-1]
             val = latest_row[col]
@@ -338,8 +235,7 @@ if df_target is not None:
                 prev_row = valid_series.iloc[-2]
                 val_prev = prev_row[col]
                 dtd = ((val - val_prev) / val_prev) * 100 if val_prev != 0 else 0
-            else:
-                dtd = 0
+            else: dtd = 0
                 
             current_year = date_obj.year
             prev_year_data = valid_series[valid_series[date_col_daily].dt.year == current_year - 1]
@@ -354,7 +250,6 @@ if df_target is not None:
                 
             color_dtd = "badge-red" if dtd < 0 else "badge-green"
             color_ytd = "badge-red" if ytd < 0 else "badge-green"
-            
             disp = f"{val:,.2f}" if val > 10 else f"{val:.2f}"
             
             html = f"""
@@ -366,25 +261,24 @@ if df_target is not None:
                 <span class="badge {color_ytd}">{ytd_str}</span>
             </div>
             """
-            with daily_cols[idx % 4]:
-                st.markdown(html, unsafe_allow_html=True)
+            with daily_cols[idx % 4]: st.markdown(html, unsafe_allow_html=True)
             idx += 1
             
     st.markdown("<br>", unsafe_allow_html=True)
 
-    
-    # --- DEEP DIVE (FIXED YoY COLORS) ---
+    # ==========================================
+    # --- DEEP DIVE (FIXED YoY & MtM FORMATTING) ---
+    # ==========================================
     st.markdown("### 🔍 Deep Dive: Indikator Makro (Real Sector)")
     
-    # Pastikan Tanggal dibaca sebagai datetime dan urut
     df_makro['Tanggal'] = pd.to_datetime(df_makro['Tanggal'])
     df_makro = df_makro.sort_values(by='Tanggal')
     
     cols = st.columns(4)
     probs = []
     
-    # Rules: True = Naik Bagus (Hijau), False = Turun Bagus (Hijau)
-    rules = {
+    # KAMUS ATURAN UNIVERSAL (True = Naik Hijau, False = Naik Merah)
+    rules_makro = {
         'PMI Manufaktur Negara Berkembang': True, 
         'Jumlah Uang Yang Beredar': True, 
         'Penjualan Mobil': True, 
@@ -392,95 +286,75 @@ if df_target is not None:
         'Ekspor Barang': True, 
         'Impor Barang Modal': True, 
         'Impor Bahan Baku': True, 
-        'Impor Barang Konsumsi': True, 
         'Kredit Perbankan': True, 
         'Penjualan Motor': True, 
         'Indeks Keyakinan Konsumen': True,
+        'Impor Barang Konsumsi': False, # Diubah: Naik = Merah (Berdampak negatif ke neraca)
         'Inflasi': False, 
         'Nilai Tukar terhadap Dolar AS': False, 
         'Suku Bunga': False
     }
 
-    # Ambil list kolom indikator (kecuali kolom Tanggal)
     indicator_cols = [c for c in df_makro.columns if c != 'Tanggal']
 
     for i, col in enumerate(indicator_cols):
-        # 1. AMBIL DATA TERAKHIR YANG VALID (Bukan NaN)
-        # Trik: Ambil subset kolom ini, buang baris kosong, ambil yang paling bawah
         valid_series = df_makro[['Tanggal', col]].dropna()
-        
-        if valid_series.empty:
-            continue # Skip jika data kosong total
+        if valid_series.empty: continue
 
         latest_row = valid_series.iloc[-1]
         val = latest_row[col]
         date_obj = latest_row['Tanggal']
-        
-        # Format Tanggal untuk Label (Misal: Jan 2026)
         date_str = date_obj.strftime("%b %Y")
         
-        # 2. HITUNG MtM (Bandingkan dengan row sebelumnya di series yang valid)
+        # Hitung MtM (Absolut & Persentase)
         if len(valid_series) > 1:
             prev_row = valid_series.iloc[-2]
-            val_prev = prev_row[col]
-            mtm = ((val - val_prev)/val_prev)*100 if val_prev!=0 else 0
+            val_prev_mtm = prev_row[col]
+            mtm_diff = val - val_prev_mtm
+            mtm_pct = (mtm_diff / abs(val_prev_mtm)) * 100 if val_prev_mtm != 0 else 0
         else:
-            mtm = 0
+            mtm_diff, mtm_pct = 0, 0
 
-        # 3. HITUNG YoY (Bandingkan dengan tahun lalu)
-        # Cari tanggal yang sama di tahun sebelumnya
+        # Hitung YoY (Absolut & Persentase)
         target_date_yoy = date_obj - pd.DateOffset(years=1)
-        # Cari row di df_makro yang bulan & tahunnya sama
-        row_yoy = df_makro[
-            (df_makro['Tanggal'].dt.year == target_date_yoy.year) & 
-            (df_makro['Tanggal'].dt.month == target_date_yoy.month)
-        ]
+        row_yoy = df_makro[(df_makro['Tanggal'].dt.year == target_date_yoy.year) & (df_makro['Tanggal'].dt.month == target_date_yoy.month)]
         
         if not row_yoy.empty and pd.notna(row_yoy.iloc[0][col]):
             val_yoy = row_yoy.iloc[0][col]
-            yoy = ((val - val_yoy)/val_yoy)*100 if val_yoy!=0 else 0
-            
-            # --- PERBAIKAN: Teks YoY khusus indikator indeks/level ---
-            if "PMI" in col or "Inflasi" in col or "Suku Bunga" in col or "Nilai Tukar" in col or "Indeks Keyakinan Konsumen" in col:
-                 yoy_val = val - val_yoy
-                 yoy_str = f"YoY: {yoy_val:+.2f}"
-            else:
-                 yoy_str = f"YoY: {yoy:+.2f}%"
+            yoy_diff = val - val_yoy
+            yoy_pct = (yoy_diff / abs(val_yoy)) * 100 if val_yoy != 0 else 0
+            has_yoy = True
         else:
-            yoy = 0
-            yoy_str = "YoY: -"
+            yoy_diff, yoy_pct, has_yoy = 0, 0, False
 
-        # 4. LOGIKA WARNA (BADGE)
-        is_bad_mtm, is_bad_yoy = False, False
-        rule_naik_bagus = rules.get(col, True) # Default Naik Bagus
+        rule_naik_bagus = rules_makro.get(col, True)
+        is_level_indicator = any(k in col for k in ["PMI", "Inflasi", "Suku Bunga", "Nilai Tukar", "Indeks Keyakinan Konsumen"])
 
-        # Format Angka Tampilan & Warna
-        if "Inflasi" in col or "Suku Bunga" in col or "Nilai Tukar" in col:
-            disp = f"{val:.2f}"
-            if val > 3.5 or val > 16000: is_bad_mtm = True # Threshold dummy
-            color_1 = "badge-red" if is_bad_mtm else "badge-green"
-            badge_1 = "Level"
-            badge_2, color_2 = "", "badge-neutral"
+        # FORMAT TAMPILAN
+        if is_level_indicator:
+            disp = f"{val:,.2f}" if val > 1000 else f"{val:.2f}"
+            badge_1 = f"MtM: {mtm_diff:+.2f}"
+            badge_2 = f"YoY: {yoy_diff:+.2f}" if has_yoy else "YoY: -"
+            
+            is_bad_mtm = (rule_naik_bagus and mtm_diff < 0) or (not rule_naik_bagus and mtm_diff > 0)
+            is_bad_yoy = (rule_naik_bagus and yoy_diff < 0) or (not rule_naik_bagus and yoy_diff > 0)
         else:
             disp = f"{val:,.2f}"
-            badge_1 = f"MtM: {mtm:+.2f}%"
+            badge_1 = f"MtM: {mtm_pct:+.2f}%"
+            badge_2 = f"YoY: {yoy_pct:+.2f}%" if has_yoy else "YoY: -"
             
-            # Cek Rule MtM
-            if (rule_naik_bagus and mtm < 0) or (not rule_naik_bagus and mtm > 0): is_bad_mtm = True
-            
-            # Cek Rule YoY
-            badge_2 = yoy_str
-            if yoy_str != "YoY: -":
-                if (rule_naik_bagus and yoy < 0) or (not rule_naik_bagus and yoy > 0): is_bad_yoy = True
-            
-            if "PMI" in col and val < 50: is_bad_mtm = True; is_bad_yoy = True
-            
-            color_1 = "badge-red" if is_bad_mtm else "badge-green"
-            color_2 = "badge-red" if is_bad_yoy else "badge-green"
-            
-            if is_bad_mtm or is_bad_yoy: probs.append(f"{col} (Weak Trend)")
+            is_bad_mtm = (rule_naik_bagus and mtm_pct < 0) or (not rule_naik_bagus and mtm_pct > 0)
+            is_bad_yoy = (rule_naik_bagus and yoy_pct < 0) or (not rule_naik_bagus and yoy_pct > 0)
 
-        # 5. RENDER KARTU HTML (Ada tambahan label Tanggal Data)
+        # Threshold Darurat PMI
+        if "PMI" in col and val < 50: 
+            is_bad_mtm, is_bad_yoy = True, True
+            
+        color_1 = "badge-red" if is_bad_mtm else "badge-green"
+        color_2 = "badge-red" if is_bad_yoy else "badge-green"
+        
+        if is_bad_mtm or is_bad_yoy: probs.append(f"{col} (Weak Trend)")
+
         html = f"""
         <div class="glass-card" style="padding: 15px; margin-bottom: 10px;">
             <div class="card-title">{col}</div>
@@ -492,7 +366,7 @@ if df_target is not None:
         """
         with cols[i%4]: st.markdown(html, unsafe_allow_html=True)
 
-    ## ==========================================
+    # ==========================================
     # --- HEATMAP BULANAN (YOY TRACKER) ---
     # ==========================================
     st.markdown("### 🗺️ Heatmap Tracker (Tren YoY)")
@@ -508,14 +382,8 @@ if df_target is not None:
         
         for col in indicator_cols:
             col_z, col_text = [], []
-            
-            # --- ATURAN WARNA MUTLAK ---
-            # Default semua indikator (Ekspor, Mobil, Kredit, Motor, dll): NAIK = HIJAU
-            rule_naik_bagus = True 
-            
-            # Pengecualian hanya untuk 3 ini: NAIK = MERAH
-            if "Inflasi" in col or "Nilai Tukar" in col or "Suku Bunga" in col:
-                rule_naik_bagus = False
+            rule_naik_bagus = rules_makro.get(col, True)
+            is_level_indicator = any(k in col for k in ["PMI", "Inflasi", "Suku Bunga", "Nilai Tukar", "Indeks Keyakinan Konsumen"])
                 
             for d in dates_hm:
                 curr_row = df_makro[df_makro['Tanggal'] == d]
@@ -531,23 +399,15 @@ if df_target is not None:
                 else:
                     diff = val - val_prev
                     
-                    # --- PERHITUNGAN TEKS ---
-                    if "PMI" in col or "Inflasi" in col or "Suku Bunga" in col or "Nilai Tukar" in col or "Indeks Keyakinan Konsumen" in col:
+                    if is_level_indicator:
                         txt = f"{val:,.2f}" if val > 1000 else f"{val:.2f}"
                     else:
-                        # Perhitungan YoY untuk Kredit, Motor, Mobil, Ekspor, dll
                         yoy_pct = (diff / abs(val_prev)) * 100 if val_prev != 0 else 0
                         txt = f"{yoy_pct:+.2f}%"
                         
-                    # --- EKSEKUSI WARNA HEATMAP ---
-                    if diff == 0:
-                        col_z.append(0) 
-                    elif rule_naik_bagus == True:
-                        # Sifat Mobil, Kredit, Motor: Kalau diff-nya positif (Naik), warnai Hijau (1)
-                        col_z.append(1 if diff > 0 else -1) 
-                    else:
-                        # Sifat Inflasi: Kalau diff-nya negatif (Turun), warnai Hijau (1)
-                        col_z.append(1 if diff < 0 else -1) 
+                    if diff == 0: col_z.append(0) 
+                    elif rule_naik_bagus: col_z.append(1 if diff > 0 else -1) 
+                    else: col_z.append(1 if diff < 0 else -1) 
                         
                     col_text.append(txt)
             
@@ -575,55 +435,37 @@ if df_target is not None:
         
     st.markdown('</div>', unsafe_allow_html=True)
     
-    # --- AI ADVISOR (CODINGAN USER YANG WORK) ---
+    # ==========================================
+    # --- AI ADVISOR ---
+    # ==========================================
     st.markdown("### 🧠 AI Policy Generator")
     st.markdown('<div class="glass-card">', unsafe_allow_html=True)
 
-    # Tombol langsung muncul tanpa input field
     if st.button("Generate Kebijakan Strategis (AI)"):
         genai.configure(api_key=USER_API_KEY)
         with st.spinner('AI sedang mensimulasikan skenario ekonomi...'):
             try:
-                # Auto-Detect Model (Smart Logic)
                 avail = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
                 model_name = next((m for m in avail if 'flash' in m), avail[0] if avail else None)
 
-
-                if not model_name:
-                    st.error("Gagal mendeteksi model. Cek API Key atau Region.")
+                if not model_name: st.error("Gagal mendeteksi model. Cek API Key atau Region.")
                 else:
                     model = genai.GenerativeModel(model_name)
-
                     prob_str = ", ".join(probs) if probs else "None (Stabil)"
                     prompt = f"""
                     Role: Perencana Bappenas Republik Indonesia.
-                    
-                    Konteks Ekonomi Saat Ini:
-                    - View Periode Analisis: {selected_view}
-                    - Rata-rata Proyeksi: {current_avg:.2f}% | Target 2026: {current_target}%
-                    - Sinyal Pelemahan Bulanan: {prob_str}.
-                    - Dinamika Harian: Membutuhkan mitigasi gejolak pasar komoditas & finansial.
-
-                    Tugas Anda:
-                    1. Rumuskan 5 rekomendasi kebijakan strategis (non-normatif, spesifik, actionable) untuk mengamankan target 2026.
-                    2. Kebijakan harus mensintesiskan mitigasi jangka pendek (data harian) dan perbaikan struktural (data bulanan).
-                    3. WAJIB didasarkan pada "Grand Theory" atau "Seminal Paper" (Paper Utama yang sudah sangat terkenal dan valid secara akademik) dari ekonom ternama dunia (misal: Dani Rodrik, Paul Krugman, Joseph Stiglitz, dll). Jangan menggunakan paper antah-berantah.
-                    
-                    ATURAN KETAT DAFTAR PUSTAKA (ANTI-HALUSINASI):
-                    - DILARANG KERAS memberikan link URL langsung ke jurnal atau link DOI (karena AI sering salah/halusinasi URL).
-                    - Sebagai gantinya, berikan format referensi seperti di bawah ini, di mana URL-nya menggunakan format pencarian Google Scholar yang PASTI BISA DIKLIK.
-
-                    Format Output Daftar Pustaka untuk setiap kebijakan (Tulis di akhir respon):
-                    [Nomor Kebijakan]. Dasar Teori/Konsep: (Sebutkan Nama Teorinya)
-                    - Tokoh/Penulis Utama: (Nama Ekonom Valid, Tahun)
-                    - Bukti Negara Lain: (Contoh valid implementasinya, misal: Kebijakan X di Chile tahun 2000-an)
-                    - Link Jurnal (Google Scholar): https://scholar.google.com/scholar?q=[ISI_DENGAN_NAMA_PENULIS_DAN_KATA_KUNCI_KONSEP_TANPA_SPASI_GUNAKAN_TANDA_TAMBAH]
+                    Konteks: {selected_view}. Avg: {current_avg:.2f}%. Target: {current_target}%.
+                    Pelemahan Bulanan: {prob_str}. Dinamika Harian: Volatilitas pasar.
+                    Tugas: 5 rekomendasi kebijakan strategis (spesifik, actionable). Sintesiskan mitigasi jangka pendek & perbaikan struktural.
+                    Wajib: Didasarkan pada "Seminal Paper" ekonom ternama.
+                    Daftar Pustaka: DILARANG pakai URL DOI. Wajib pakai format: 
+                    [Nomor]. Dasar Teori: (Nama Teori)
+                    - Penulis: (Nama, Tahun)
+                    - Link (Google Scholar): https://scholar.google.com/scholar?q=[KATA_KUNCI]
                     """
-
                     res = model.generate_content(prompt)
                     st.success(f"Analisis Selesai (Engine: {model_name})")
                     st.markdown(res.text)
-            except Exception as e:
-                st.error(f"Error AI: {e}")
+            except Exception as e: st.error(f"Error AI: {e}")
 
     st.markdown('</div>', unsafe_allow_html=True)
