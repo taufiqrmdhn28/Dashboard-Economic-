@@ -277,7 +277,7 @@ if df_target is not None:
     cols = st.columns(4)
     probs = []
     
-    # KUNCI UTAMA: Semua diseragamkan True (Naik=Hijau), kecuali 3 indikator moneter
+    # KUNCI UTAMA WARNA: True (Naik=Hijau), False (Naik=Merah)
     rules_makro = {
         'PMI Manufaktur Negara Berkembang': True, 
         'Jumlah Uang Yang Beredar': True, 
@@ -286,13 +286,13 @@ if df_target is not None:
         'Ekspor Barang': True, 
         'Impor Barang Modal': True, 
         'Impor Bahan Baku': True, 
-        'Kredit Perbankan': True,       # SIFAT SAMA: NAIK = HIJAU
-        'Penjualan Motor': True,        # SIFAT SAMA: NAIK = HIJAU
-        'Indeks Keyakinan Konsumen': True, 
-        'Impor Barang Konsumsi': True,  # PERBAIKAN: Diubah jadi True (NAIK = HIJAU)
-        'Inflasi': False,               # PENGECUALIAN: NAIK = MERAH
-        'Nilai Tukar terhadap Dolar AS': False, # PENGECUALIAN: NAIK = MERAH
-        'Suku Bunga': False             # PENGECUALIAN: NAIK = MERAH
+        'Kredit Perbankan': True,       # NAIK = HIJAU (Format: Persentase)
+        'Penjualan Motor': True,        # NAIK = HIJAU (Format: Persentase)
+        'Indeks Keyakinan Konsumen': True, # NAIK = HIJAU (Format: Angka Asli)
+        'Impor Barang Konsumsi': True,  # NAIK = HIJAU (Format: Persentase)
+        'Inflasi': False,               # NAIK = MERAH (Format: Angka Asli)
+        'Nilai Tukar terhadap Dolar AS': False, # NAIK = MERAH (Format: Angka Asli)
+        'Suku Bunga': False             # NAIK = MERAH (Format: Angka Asli)
     }
 
     indicator_cols = [c for c in df_makro.columns if c != 'Tanggal']
@@ -306,7 +306,7 @@ if df_target is not None:
         date_obj = latest_row['Tanggal']
         date_str = date_obj.strftime("%b %Y")
         
-        # Hitung MtM (Absolut & Persentase)
+        # Hitung MtM 
         if len(valid_series) > 1:
             prev_row = valid_series.iloc[-2]
             val_prev_mtm = prev_row[col]
@@ -315,7 +315,7 @@ if df_target is not None:
         else:
             mtm_diff, mtm_pct = 0, 0
 
-        # Hitung YoY (Absolut & Persentase)
+        # Hitung YoY 
         target_date_yoy = date_obj - pd.DateOffset(years=1)
         row_yoy = df_makro[(df_makro['Tanggal'].dt.year == target_date_yoy.year) & (df_makro['Tanggal'].dt.month == target_date_yoy.month)]
         
@@ -328,9 +328,11 @@ if df_target is not None:
             yoy_diff, yoy_pct, has_yoy = 0, 0, False
 
         rule_naik_bagus = rules_makro.get(col, True)
+        
+        # KUNCI FORMAT: Hanya 5 indikator ini yang tampil angka asli. Sisanya otomatis Persentase (%)
         is_level_indicator = any(k in col for k in ["PMI", "Inflasi", "Suku Bunga", "Nilai Tukar", "Indeks Keyakinan Konsumen"])
 
-        # FORMAT TAMPILAN
+        # FORMAT TAMPILAN DEEP DIVE
         if is_level_indicator:
             disp = f"{val:,.2f}" if val > 1000 else f"{val:.2f}"
             badge_1 = f"MtM: {mtm_diff:+.2f}"
@@ -346,7 +348,6 @@ if df_target is not None:
             is_bad_mtm = (rule_naik_bagus and mtm_pct < 0) or (not rule_naik_bagus and mtm_pct > 0)
             is_bad_yoy = (rule_naik_bagus and yoy_pct < 0) or (not rule_naik_bagus and yoy_pct > 0)
 
-        # Threshold Darurat PMI
         if "PMI" in col and val < 50: 
             is_bad_mtm, is_bad_yoy = True, True
             
@@ -399,6 +400,7 @@ if df_target is not None:
                 else:
                     diff = val - val_prev
                     
+                    # FORMAT TAMPILAN HEATMAP
                     if is_level_indicator:
                         txt = f"{val:,.2f}" if val > 1000 else f"{val:.2f}"
                     else:
