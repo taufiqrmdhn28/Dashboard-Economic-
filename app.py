@@ -267,6 +267,26 @@ if df_target is not None:
     st.markdown("<br>", unsafe_allow_html=True)
 
     # ==========================================
+    # --- ATURAN GLOBAL WARNA (WAJIB DI SINI) ---
+    # ==========================================
+    ATURAN_WARNA = {
+        'PMI Manufaktur Negara Berkembang': True, 
+        'Jumlah Uang Yang Beredar': True, 
+        'Penjualan Mobil': True, 
+        'Penjualan semen': True, 
+        'Ekspor Barang': True, 
+        'Impor Barang Modal': True, 
+        'Impor Bahan Baku': True, 
+        'Kredit Perbankan': True,       # NAIK = HIJAU
+        'Penjualan Motor': True,        # NAIK = HIJAU
+        'Indeks Keyakinan Konsumen': True, 
+        'Impor Barang Konsumsi': True, 
+        'Inflasi': False, 
+        'Nilai Tukar terhadap Dolar AS': False, 
+        'Suku Bunga': False
+    }
+
+    # ==========================================
     # --- DEEP DIVE (FIXED YoY & MtM FORMATTING) ---
     # ==========================================
     st.markdown("### 🔍 Deep Dive: Indikator Makro (Real Sector)")
@@ -277,24 +297,6 @@ if df_target is not None:
     cols = st.columns(4)
     probs = []
     
-    # KUNCI UTAMA WARNA: True (Naik=Hijau), False (Naik=Merah)
-    rules_makro = {
-        'PMI Manufaktur Negara Berkembang': True, 
-        'Jumlah Uang Yang Beredar': True, 
-        'Penjualan Mobil': True, 
-        'Penjualan semen': True, 
-        'Ekspor Barang': True, 
-        'Impor Barang Modal': True, 
-        'Impor Bahan Baku': True, 
-        'Kredit Perbankan': True,       # NAIK = HIJAU (Format: Persentase)
-        'Penjualan Motor': True,        # NAIK = HIJAU (Format: Persentase)
-        'Indeks Keyakinan Konsumen': True, # NAIK = HIJAU (Format: Angka Asli)
-        'Impor Barang Konsumsi': True,  # NAIK = HIJAU (Format: Persentase)
-        'Inflasi': False,               # NAIK = MERAH (Format: Angka Asli)
-        'Nilai Tukar terhadap Dolar AS': False, # NAIK = MERAH (Format: Angka Asli)
-        'Suku Bunga': False             # NAIK = MERAH (Format: Angka Asli)
-    }
-
     indicator_cols = [c for c in df_makro.columns if c != 'Tanggal']
 
     for i, col in enumerate(indicator_cols):
@@ -327,9 +329,9 @@ if df_target is not None:
         else:
             yoy_diff, yoy_pct, has_yoy = 0, 0, False
 
-        rule_naik_bagus = rules_makro.get(col, True)
+        # --- AMBIL ATURAN DARI ATURAN_WARNA ---
+        rule_naik_bagus = ATURAN_WARNA.get(col, True)
         
-        # KUNCI FORMAT: Hanya 5 indikator ini yang tampil angka asli. Sisanya otomatis Persentase (%)
         is_level_indicator = any(k in col for k in ["PMI", "Inflasi", "Suku Bunga", "Nilai Tukar", "Indeks Keyakinan Konsumen"])
 
         # FORMAT TAMPILAN DEEP DIVE
@@ -383,14 +385,15 @@ if df_target is not None:
         
         for col in indicator_cols:
             col_z, col_text = [], []
-            rule_naik_bagus = rules_makro.get(col, True)
+            
+            # --- AMBIL ATURAN DARI SUMBER YANG SAMA DENGAN DEEP DIVE ---
+            rule_naik_bagus = ATURAN_WARNA.get(col, True)
             is_level_indicator = any(k in col for k in ["PMI", "Inflasi", "Suku Bunga", "Nilai Tukar", "Indeks Keyakinan Konsumen"])
                 
             for d in dates_hm:
                 curr_row = df_makro[df_makro['Tanggal'] == d]
                 val = curr_row[col].values[0] if not curr_row.empty else np.nan
                 
-                # --- KEMBALI KE LOGIKA YOY MUTLAK ---
                 prev_d = d - pd.DateOffset(years=1)
                 prev_row = df_makro[(df_makro['Tanggal'].dt.year == prev_d.year) & (df_makro['Tanggal'].dt.month == prev_d.month)]
                 val_prev = prev_row[col].values[0] if not prev_row.empty else np.nan
@@ -404,15 +407,12 @@ if df_target is not None:
                     if is_level_indicator:
                         txt = f"{val:,.2f}" if val > 1000 else f"{val:.2f}"
                     else:
-                        # Kredit & Motor masuk ke sini (sifat sama kayak Ekspor)
                         yoy_pct = (diff / abs(val_prev)) * 100 if val_prev != 0 else 0
                         txt = f"{yoy_pct:+.2f}%"
                         
-                    # LOGIKA WARNA YOY MUTLAK
                     if diff == 0: 
                         col_z.append(0) 
                     elif rule_naik_bagus: 
-                        # 9.37 vs 10.30 -> diff negatif -> masuk ke else -> warnanya MERAH (-1)
                         col_z.append(1 if diff > 0 else -1) 
                     else: 
                         col_z.append(1 if diff < 0 else -1) 
