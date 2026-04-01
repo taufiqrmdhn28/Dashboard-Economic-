@@ -418,7 +418,8 @@ if df_target is not None:
             
         fig_hm = go.Figure(data=go.Heatmap(
             z=z_data, x=x_labels, y=indicator_cols, text=text_data,
-            texttemplate="%{text}", 
+            texttemplate="%{text}",
+            textfont=dict(size=16, color='#111'),
             colorscale=[[0.0, '#e74c3c'], [0.5, '#ecf0f1'], [1.0, '#2ecc71']], 
             zmin=-1, zmax=1, showscale=False, xgap=3, ygap=3
         ))
