@@ -287,22 +287,10 @@ if df_target is not None:
     }
 
     # ==========================================
-    # --- DEFINISI INDKATOR LEVEL ---
-    # ==========================================
-    LEVEL_INDICATORS = {
-        'PMI', 
-        'Inflasi',
-        'Suku Bunga',
-        'Nilai Tukar',
-        'Indeks Keyakinan Konsumen',
-        'Kredit Perbankan',
-        'Penjualan Motor'
-    }
-
-    # ==========================================
     # --- DEEP DIVE (FIXED YoY & MtM FORMATTING) ---
     # ==========================================
     st.markdown("### 🔍 Deep Dive: Indikator Makro (Real Sector)")
+    
     df_makro['Tanggal'] = pd.to_datetime(df_makro['Tanggal'])
     df_makro = df_makro.sort_values(by='Tanggal')
     
@@ -344,7 +332,7 @@ if df_target is not None:
         # --- AMBIL ATURAN DARI ATURAN_WARNA ---
         rule_naik_bagus = ATURAN_WARNA.get(col, True)
         
-        is_level_indicator = any(k in col for k in LEVEL_INDICATORS)
+        is_level_indicator = any(k in col for k in ["PMI", "Inflasi", "Suku Bunga", "Nilai Tukar", "Indeks Keyakinan Konsumen"])
 
         # FORMAT TAMPILAN DEEP DIVE
         if is_level_indicator:
@@ -386,21 +374,20 @@ if df_target is not None:
     # ==========================================
     st.markdown("### 🗺️ Heatmap Tracker (Tren YoY)")
     st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-    
     df_hm = df_makro[df_makro['Tanggal'] >= '2025-01-01'].copy()
     
     if not df_hm.empty:
         dates_hm = df_hm['Tanggal'].tolist()
         x_labels = df_hm['Tanggal'].dt.strftime('%b %Y').tolist()
-        
         z_data, text_data = [], []
         
         for col in indicator_cols:
             col_z, col_text = [], []
             
-            # --- AMBIL ATURAN DARI SUMBER YANG SAMA DENGAN DEEP DIVE ---
-            rule_naik_bagus = ATURAN_WARNA.get(col, True)
-            is_level_indicator = any(k in col for k in LEVEL_INDICATORS)
+            # AMBIL ATURAN DARI KAMUS SAKTI
+            rule_naik_bagus = ATURAN_WARNA.get(col.strip(), True)
+            
+            is_level_indicator = any(k in col for k in ["PMI", "Inflasi", "Suku Bunga", "Nilai Tukar", "Indeks Keyakinan Konsumen"])
                 
             for d in dates_hm:
                 curr_row = df_makro[df_makro['Tanggal'] == d]
@@ -416,18 +403,24 @@ if df_target is not None:
                 else:
                     diff = val - val_prev
                     
+                    # 1. HITUNG PERTUMBUHAN (YOY) UNTUK TEKS DAN WARNA
                     if is_level_indicator:
+                        yoy_calc = diff  # Untuk indikator level, pertumbuhannya adalah selisih poin
                         txt = f"{val:,.2f}" if val > 1000 else f"{val:.2f}"
                     else:
-                        yoy_pct = (diff / abs(val_prev)) * 100 if val_prev != 0 else 0
-                        txt = f"{yoy_pct:+.2f}%"
+                        # KUNCI: Menghitung persentase pertumbuhan YoY
+                        yoy_calc = (diff / abs(val_prev)) * 100 if val_prev != 0 else 0
+                        txt = f"{yoy_calc:+.2f}%"
                         
-                    if diff == 0: 
+                    # 2. WARNA MUTLAK BERDASARKAN HASIL YOY (BUKAN NILAI DATA MENTAH)
+                    if yoy_calc == 0: 
                         col_z.append(0) 
                     elif rule_naik_bagus: 
-                        col_z.append(1 if diff > 0 else -1) 
+                        # Jika aturan NAIK = HIJAU, dan pertumbuhan (yoy_calc) positif -> Hijau (1), negatif -> Merah (-1)
+                        col_z.append(1 if yoy_calc > 0 else -1) 
                     else: 
-                        col_z.append(1 if diff < 0 else -1) 
+                        # Jika aturan NAIK = MERAH, dan pertumbuhan (yoy_calc) negatif -> Hijau (1), positif -> Merah (-1)
+                        col_z.append(1 if yoy_calc < 0 else -1) 
                         
                     col_text.append(txt)
             
@@ -441,19 +434,16 @@ if df_target is not None:
             colorscale=[[0.0, '#e74c3c'], [0.5, '#ecf0f1'], [1.0, '#2ecc71']], 
             zmin=-1, zmax=1, showscale=False, xgap=3, ygap=3
         ))
-        
         fig_hm.update_layout(
             height=150 + len(indicator_cols)*35,
             margin=dict(l=220, r=20, t=30, b=20),
             plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
             yaxis=dict(autorange="reversed", tickfont=dict(size=12, color='#333', weight='bold')) 
         )
-        
         st.plotly_chart(fig_hm, use_container_width=True)
         st.markdown("<p style='font-size: 11px; color: #666; text-align: center;'>Keterangan Warna: 🟩 Mengalami Perbaikan (YoY) | 🟥 Mengalami Perlambatan (YoY) | ⬜ Stagnan / Belum Rilis</p>", unsafe_allow_html=True)
     else:
         st.info("Belum ada data bulanan untuk ditampilkan.")
-        
     st.markdown('</div>', unsafe_allow_html=True)
     
     # ==========================================
