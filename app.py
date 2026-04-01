@@ -277,8 +277,8 @@ if df_target is not None:
         'Ekspor Barang': True, 
         'Impor Barang Modal': True, 
         'Impor Bahan Baku': True, 
-        'Kredit Perbankan': True,       # NAIK = HIJAU
-        'Penjualan Motor': True,        # NAIK = HIJAU
+        'Kredit Perbankan': True,
+        'Penjualan Motor': True,
         'Indeks Keyakinan Konsumen': True, 
         'Impor Barang Konsumsi': True, 
         'Inflasi': False, 
