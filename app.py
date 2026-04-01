@@ -277,7 +277,7 @@ if df_target is not None:
     cols = st.columns(4)
     probs = []
     
-    # KAMUS ATURAN UNIVERSAL (True = Naik Hijau, False = Naik Merah)
+    # KUNCI UTAMA: Semua diseragamkan True (Naik=Hijau), kecuali 3 indikator moneter
     rules_makro = {
         'PMI Manufaktur Negara Berkembang': True, 
         'Jumlah Uang Yang Beredar': True, 
@@ -286,13 +286,13 @@ if df_target is not None:
         'Ekspor Barang': True, 
         'Impor Barang Modal': True, 
         'Impor Bahan Baku': True, 
-        'Kredit Perbankan': True, 
-        'Penjualan Motor': True, 
-        'Indeks Keyakinan Konsumen': True,
-        'Impor Barang Konsumsi': False, # Diubah: Naik = Merah (Berdampak negatif ke neraca)
-        'Inflasi': False, 
-        'Nilai Tukar terhadap Dolar AS': False, 
-        'Suku Bunga': False
+        'Kredit Perbankan': True,       # SIFAT SAMA: NAIK = HIJAU
+        'Penjualan Motor': True,        # SIFAT SAMA: NAIK = HIJAU
+        'Indeks Keyakinan Konsumen': True, 
+        'Impor Barang Konsumsi': True,  # PERBAIKAN: Diubah jadi True (NAIK = HIJAU)
+        'Inflasi': False,               # PENGECUALIAN: NAIK = MERAH
+        'Nilai Tukar terhadap Dolar AS': False, # PENGECUALIAN: NAIK = MERAH
+        'Suku Bunga': False             # PENGECUALIAN: NAIK = MERAH
     }
 
     indicator_cols = [c for c in df_makro.columns if c != 'Tanggal']
