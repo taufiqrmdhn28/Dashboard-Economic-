@@ -267,43 +267,42 @@ if df_target is not None:
     st.markdown("<br>", unsafe_allow_html=True)
 
     # ==========================================
-# --- ATURAN GLOBAL WARNA (WAJIB DI SINI) ---
-# ==========================================
-ATURAN_WARNA = {
-    'PMI Manufaktur Negara Berkembang': True, 
-    'Jumlah Uang Yang Beredar': True, 
-    'Penjualan Mobil': True, 
-    'Penjualan semen': True, 
-    'Ekspor Barang': True, 
-    'Impor Barang Modal': True, 
-    'Impor Bahan Baku': True, 
-    'Kredit Perbankan': True,
-    'Penjualan Motor': True,
-    'Indeks Keyakinan Konsumen': True, 
-    'Impor Barang Konsumsi': True, 
-    'Inflasi': False, 
-    'Nilai Tukar terhadap Dolar AS': False, 
-    'Suku Bunga': False
-}
+    # --- ATURAN GLOBAL WARNA (WAJIB DI SINI) ---
+    # ==========================================
+    ATURAN_WARNA = {
+        'PMI Manufaktur Negara Berkembang': True, 
+        'Jumlah Uang Yang Beredar': True, 
+        'Penjualan Mobil': True, 
+        'Penjualan semen': True, 
+        'Ekspor Barang': True, 
+        'Impor Barang Modal': True, 
+        'Impor Bahan Baku': True, 
+        'Kredit Perbankan': True,       # NAIK = HIJAU
+        'Penjualan Motor': True,        # NAIK = HIJAU
+        'Indeks Keyakinan Konsumen': True, 
+        'Impor Barang Konsumsi': True, 
+        'Inflasi': False, 
+        'Nilai Tukar terhadap Dolar AS': False, 
+        'Suku Bunga': False
+    }
 
-# ==========================================
-# --- DEFINISI INDIKATOR LEVEL (FIX BUG) ---
-# ==========================================
-LEVEL_INDICATORS = [
-    "PMI",
-    "Inflasi",
-    "Suku Bunga",
-    "Nilai Tukar",
-    "Indeks Keyakinan Konsumen",
-    "Kredit Perbankan",
-    "Penjualan Motor"
-]
+    # ==========================================
+    # --- DEFINISI INDKATOR LEVEL ---
+    # ==========================================
+    LEVEL_INDICATORS = {
+        'PMI', 
+        'Inflasi',
+        'Suku Bunga',
+        'Nilai Tukar',
+        'Indeks Keyakinan Konsumen',
+        'Kredit Perbankan',
+        'Penjualan Motor'
+    }
 
     # ==========================================
     # --- DEEP DIVE (FIXED YoY & MtM FORMATTING) ---
     # ==========================================
     st.markdown("### 🔍 Deep Dive: Indikator Makro (Real Sector)")
-    
     df_makro['Tanggal'] = pd.to_datetime(df_makro['Tanggal'])
     df_makro = df_makro.sort_values(by='Tanggal')
     
