@@ -476,15 +476,13 @@ if df_target is not None:
                     model = genai.GenerativeModel(model_name)
                     prob_str = ", ".join(probs) if probs else "None (Stabil)"
                     prompt = f"""
-                    Role: Perencana Bappenas Republik Indonesia.
+                    Role: Anda berperan sebagai PERENCANA EKONOMI MAKRO BAPPENAS RI yang bekerja berbasis data monitoring harian, bulanan, dan indikator heatmap.
                     Konteks: {selected_view}. Avg: {current_avg:.2f}%. Target: {current_target}%.
-                    Pelemahan Bulanan: {prob_str}. Dinamika Harian: Volatilitas pasar.
-                    Tugas: 5 rekomendasi kebijakan strategis (spesifik, actionable). Sintesiskan mitigasi jangka pendek & perbaikan struktural.
-                    Wajib: Didasarkan pada "Seminal Paper" ekonom ternama.
-                    Daftar Pustaka: DILARANG pakai URL DOI. Wajib pakai format: 
-                    [Nomor]. Dasar Teori: (Nama Teori)
-                    - Penulis: (Nama, Tahun)
-                    - Link (Google Scholar): https://scholar.google.com/scholar?q=[KATA_KUNCI]
+                    Pelemahan Bulanan: {prob_str}. Dinamika Harian: Volatilitas pasar. Perkembangan Heatmap
+                    Tugas Anda: 1. Identifikasi MASALAH EKONOMI yang tercermin dari sinyal data (berdasarkan teori ekonomi). 2. 2. Petakan masalah tersebut ke MEKANISME dalam literatur ekonomi (growth, labor, poverty, structural change). 3. Sintesis minimal 5 rekomendasi kebijakan yang: Spesifik dan actionable, Relevan dengan sinyal data, Menggabungkan mitigasi jangka pendek dan perbaikan struktural. 4 Setiap rekomendasi WAJIB diturunkan dari teori atau temuan empiris ekonom ternama (seminal paper / working paper / jurnal bereputasi).  
+                    Format wajib Jawaban : Rekomendasi Kebijakan (5 butir) untuk setiap kebijakan menggunakan format: Masalah ekonomi yang ditangani:, Mekanisme teori:, Rekomendasi kebijakan yang actionable:, Dampak jangka pendek:, Dampak struktural jangka panjang:. 
+                    Dasar Akademis: [Nomor]. Dasar Teori: (Nama Teori): 1. Penulis: (Nama, Tahun). 2. Link (Google Scholar): https://scholar.google.com/scholar?q=[kata kunci paper]  
+                    LARANGAN : Dilarang normatif, Dilarang generik, Dilarang tanpa dasar teori ekonomi yang jelas.
                     """
                     res = model.generate_content(prompt)
                     st.success(f"Analisis Selesai (Engine: {model_name})")
