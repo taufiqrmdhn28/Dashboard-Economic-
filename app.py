@@ -489,16 +489,44 @@ if df_target is not None:
                             top_p=0.1
                         )
                         model = genai.GenerativeModel(model_name)
-                    prob_str = ", ".join(probs) if probs else "None (Stabil)"
-                    prompt = f"""
-                    Role: Anda berperan sebagai PERENCANA EKONOMI MAKRO BAPPENAS RI yang bekerja berbasis data monitoring harian, bulanan, dan indikator heatmap.
-                    Konteks: {selected_view}. Avg: {current_avg:.2f}%. Target: {current_target}%.
-                    Pelemahan Bulanan: {prob_str}. Dinamika Harian: Volatilitas pasar. Perkembangan Heatmap
-                    Tugas Anda: 1. Identifikasi MASALAH EKONOMI yang tercermin dari sinyal data (berdasarkan teori ekonomi). 2. 2. Petakan masalah tersebut ke MEKANISME dalam literatur ekonomi (growth, labor, poverty, structural change). 3. Sintesis minimal 5 rekomendasi kebijakan yang: Spesifik dan actionable, Relevan dengan sinyal data, Menggabungkan mitigasi jangka pendek dan perbaikan struktural. 4 Setiap rekomendasi WAJIB diturunkan dari teori atau temuan empiris ekonom ternama (seminal paper / working paper / jurnal bereputasi).  
-                    Format wajib Jawaban : Rekomendasi Kebijakan (5 butir) untuk setiap kebijakan menggunakan format: Masalah ekonomi yang ditangani:, Mekanisme teori:, Rekomendasi kebijakan yang actionable:, Dampak jangka pendek:, Dampak struktural jangka panjang:. 
-                    Dasar Akademis: [Nomor]. Dasar Teori: (Nama Teori): 1. Penulis: (Nama, Tahun). 2. Link (Google Scholar): https://scholar.google.com/scholar?q=[kata kunci paper]  
-                    LARANGAN : Dilarang normatif, Dilarang generik, Dilarang tanpa dasar teori ekonomi yang jelas.
-                    """
+
+                        prompt = f"""
+Anda berperan sebagai PERENCANA EKONOMI MAKRO BAPPENAS RI berbasis data monitoring.
+
+=====================
+KONTEKS DATA
+=====================
+Indikator: {selected_view}
+Rata-rata saat ini: {current_avg:.2f}%
+Target pertumbuhan 2026: {current_target}%
+Pelemahan YoY: {prob_str}
+Dinamika: Heatmap dan volatilitas harian.
+
+=====================
+TUGAS
+=====================
+1. Interpretasikan sinyal data di atas sebagai masalah ekonomi.
+2. Petakan ke mekanisme teori ekonomi (growth, labor, poverty, structural change).
+3. Berikan 5 rekomendasi kebijakan strategis yang spesifik dan actionable.
+4. Gabungkan mitigasi jangka pendek dan reformasi struktural.
+5. Setiap kebijakan wajib berbasis seminal paper / jurnal bereputasi.
+
+=====================
+FORMAT WAJIB
+=====================
+Untuk setiap kebijakan:
+- Masalah ekonomi yang ditangani
+- Mekanisme teori
+- Rekomendasi kebijakan actionable
+- Dampak jangka pendek
+- Dampak struktural jangka panjang
+
+Dasar Akademis:
+[Nomor]. Dasar Teori
+- Penulis (Tahun)
+- Link Scholar: https://scholar.google.com/scholar?q=kata+kunci
+"""
+
                         res = model.generate_content(prompt, generation_config=generation_config)
                         policy_text = res.text
 
