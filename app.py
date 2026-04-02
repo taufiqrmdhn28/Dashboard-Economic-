@@ -463,6 +463,10 @@ if df_target is not None:
     # ==========================================
     st.markdown("### 🧠 AI Policy Generator")
     st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+    
+    # 1. BUAT MEMORY PENYIMPANAN DI STREAMLIT
+    if 'ai_policy_result' not in st.session_state:
+        st.session_state.ai_policy_result = None
 
     if st.button("Generate Kebijakan Strategis (AI)"):
         genai.configure(api_key=USER_API_KEY)
@@ -470,9 +474,12 @@ if df_target is not None:
             try:
                 avail = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
                 model_name = next((m for m in avail if 'flash' in m), avail[0] if avail else None)
-
-                if not model_name: st.error("Gagal mendeteksi model. Cek API Key atau Region.")
+                
+                if not model_name: 
+                    st.error("Gagal mendeteksi model. Cek API Key atau Region.")
                 else:
+                    # 2. KUNCI TEMPERATURE = 0.1 BIAR AI TIDAK TERLALU KREATIF/BERUBAH-UBAH
+                    generation_config = genai.types.GenerationConfig(temperature=0.1)
                     model = genai.GenerativeModel(model_name)
                     prob_str = ", ".join(probs) if probs else "None (Stabil)"
                     prompt = f"""
@@ -484,9 +491,18 @@ if df_target is not None:
                     Dasar Akademis: [Nomor]. Dasar Teori: (Nama Teori): 1. Penulis: (Nama, Tahun). 2. Link (Google Scholar): https://scholar.google.com/scholar?q=[kata kunci paper]  
                     LARANGAN : Dilarang normatif, Dilarang generik, Dilarang tanpa dasar teori ekonomi yang jelas.
                     """
-                    res = model.generate_content(prompt)
+                    # Eksekusi dengan config temperature rendah
+                    res = model.generate_content(prompt, generation_config=generation_config)
+                    
+                    # 3. SIMPAN HASILNYA KE MEMORY STREAMLIT
+                    st.session_state.ai_policy_result = res.text
                     st.success(f"Analisis Selesai (Engine: {model_name})")
-                    st.markdown(res.text)
-            except Exception as e: st.error(f"Error AI: {e}")
+                    
+            except Exception as e: 
+                st.error(f"Error AI: {e}")
+                
+    # 4. TAMPILKAN DARI MEMORY (Biar kalau refresh, teksnya tidak hilang/berubah)
+    if st.session_state.ai_policy_result:
+        st.markdown(st.session_state.ai_policy_result)
 
     st.markdown('</div>', unsafe_allow_html=True)
