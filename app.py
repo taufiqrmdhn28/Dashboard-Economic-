@@ -4,6 +4,8 @@ import numpy as np
 import plotly.graph_objects as go
 import google.generativeai as genai
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
+import os
+import pickle
 
 file_makro = "Makro Indikator AI.xlsx"
 file_adb = "INO_02022026.xlsx"
@@ -463,24 +465,30 @@ if df_target is not None:
     # ==========================================
     st.markdown("### 🧠 AI Policy Generator")
     st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-    
-    # 1. BUAT MEMORY PENYIMPANAN DI STREAMLIT
-    if 'ai_policy_result' not in st.session_state:
-        st.session_state.ai_policy_result = None
 
-    if st.button("Generate Kebijakan Strategis (AI)"):
-        genai.configure(api_key=USER_API_KEY)
-        with st.spinner('AI sedang mensimulasikan skenario ekonomi...'):
-            try:
-                avail = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-                model_name = next((m for m in avail if 'flash' in m), avail[0] if avail else None)
-                
-                if not model_name: 
-                    st.error("Gagal mendeteksi model. Cek API Key atau Region.")
-                else:
-                    # 2. KUNCI TEMPERATURE = 0.1 BIAR AI TIDAK TERLALU KREATIF/BERUBAH-UBAH
-                    generation_config = genai.types.GenerationConfig(temperature=0.1)
-                    model = genai.GenerativeModel(model_name)
+    prob_str = ", ".join(probs) if probs else "None (Stabil)"
+    signature = make_signature(selected_view, current_avg, current_target, prob_str)
+
+    # CEK APAKAH SUDAH ADA CACHE
+    if signature in st.session_state.policy_cache:
+        st.success("✅ Menggunakan hasil kebijakan sebelumnya (data belum berubah)")
+        st.markdown(st.session_state.policy_cache[signature])
+    else:
+        if st.button("Generate Kebijakan Strategis (AI)"):
+            genai.configure(api_key=USER_API_KEY)
+            with st.spinner('AI sedang mensimulasikan skenario ekonomi...'):
+                try:
+                    avail = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+                    model_name = next((m for m in avail if 'flash' in m), avail[0] if avail else None)
+
+                    if not model_name:
+                        st.error("Gagal mendeteksi model. Cek API Key atau Region.")
+                    else:
+                        generation_config = genai.types.GenerationConfig(
+                            temperature=0,
+                            top_p=0.1
+                        )
+                        model = genai.GenerativeModel(model_name)
                     prob_str = ", ".join(probs) if probs else "None (Stabil)"
                     prompt = f"""
                     Role: Anda berperan sebagai PERENCANA EKONOMI MAKRO BAPPENAS RI yang bekerja berbasis data monitoring harian, bulanan, dan indikator heatmap.
@@ -491,18 +499,18 @@ if df_target is not None:
                     Dasar Akademis: [Nomor]. Dasar Teori: (Nama Teori): 1. Penulis: (Nama, Tahun). 2. Link (Google Scholar): https://scholar.google.com/scholar?q=[kata kunci paper]  
                     LARANGAN : Dilarang normatif, Dilarang generik, Dilarang tanpa dasar teori ekonomi yang jelas.
                     """
-                    # Eksekusi dengan config temperature rendah
                     res = model.generate_content(prompt, generation_config=generation_config)
-                    
-                    # 3. SIMPAN HASILNYA KE MEMORY STREAMLIT
-                    st.session_state.ai_policy_result = res.text
-                    st.success(f"Analisis Selesai (Engine: {model_name})")
-                    
-            except Exception as e: 
-                st.error(f"Error AI: {e}")
-                
-    # 4. TAMPILKAN DARI MEMORY (Biar kalau refresh, teksnya tidak hilang/berubah)
-    if st.session_state.ai_policy_result:
-        st.markdown(st.session_state.ai_policy_result)
+                        policy_text = res.text
+
+                        # SIMPAN KE CACHE & FILE
+                        st.session_state.policy_cache[signature] = policy_text
+                        with open(CACHE_FILE, "wb") as f:
+                            pickle.dump(st.session_state.policy_cache, f)
+
+                        st.success(f"Analisis Selesai (Engine: {model_name})")
+                        st.markdown(policy_text)
+
+                except Exception as e:
+                    st.error(f"Error AI: {e}")
 
     st.markdown('</div>', unsafe_allow_html=True)
