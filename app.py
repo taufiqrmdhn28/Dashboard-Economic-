@@ -499,7 +499,7 @@ if df_target is not None:
                     Dasar Akademis: [Nomor]. Dasar Teori: (Nama Teori): 1. Penulis: (Nama, Tahun). 2. Link (Google Scholar): https://scholar.google.com/scholar?q=[kata kunci paper]  
                     LARANGAN : Dilarang normatif, Dilarang generik, Dilarang tanpa dasar teori ekonomi yang jelas.
                     """
-                    res = model.generate_content(prompt, generation_config=generation_config)
+                        res = model.generate_content(prompt, generation_config=generation_config)
                         policy_text = res.text
 
                         # SIMPAN KE CACHE & FILE
