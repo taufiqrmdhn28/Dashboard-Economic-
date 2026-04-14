@@ -11,12 +11,26 @@ file_makro = "Makro Indikator AI.xlsx"
 file_adb = "INO_02022026.xlsx"
 
 # ==========================================
-# 0. KONFIGURASI API KEY (SECURE)
+# 0. KONFIGURASI API KEY & CACHE (SECURE)
 # ==========================================
 try:
     USER_API_KEY = st.secrets["GEMINI_API_KEY"]
 except:
     USER_API_KEY = ""
+
+# Setup Cache File
+CACHE_FILE = "policy_cache.pkl"
+
+if 'policy_cache' not in st.session_state:
+    if os.path.exists(CACHE_FILE):
+        with open(CACHE_FILE, "rb") as f:
+            st.session_state.policy_cache = pickle.load(f)
+    else:
+        st.session_state.policy_cache = {}
+
+# ---> INI DIA FUNGSI YANG HILANG (PENYEBAB ERROR) <---
+def make_signature(view, avg, target, probs):
+    return f"{view}_{avg:.2f}_{target}_{probs}"
 
 # ==========================================
 # 1. SETUP & DESIGN
