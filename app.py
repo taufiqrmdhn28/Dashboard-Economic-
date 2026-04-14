@@ -19,6 +19,22 @@ except:
     USER_API_KEY = ""
 
 # ==========================================
+# SETUP CACHE AI (Biar Abadi)
+# ==========================================
+CACHE_FILE = "policy_cache.pkl"
+
+if 'policy_cache' not in st.session_state:
+    if os.path.exists(CACHE_FILE):
+        with open(CACHE_FILE, "rb") as f:
+            st.session_state.policy_cache = pickle.load(f)
+    else:
+        st.session_state.policy_cache = {}
+
+# ---> FUNGSI INI WAJIB ADA DI ATAS BIAR GAK ERROR NameError <---
+def make_signature(view, avg, target, probs, daily_info):
+    return f"{view}_{avg:.2f}_{target}_{probs}_{daily_info}"
+
+# ==========================================
 # 1. SETUP & DESIGN
 # ==========================================
 st.set_page_config(page_title="Macro AI Command Center", layout="wide", page_icon="🇮🇩")
