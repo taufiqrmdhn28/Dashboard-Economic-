@@ -233,6 +233,9 @@ if df_target is not None:
     # ==========================================
     st.markdown("### 📈 Monitoring Data Harian")
     
+    daily_summary_list = [] # <-- VARIABEL INI WAJIB ADA BIAR AI GAK ERROR
+    daily_summary_str = "Data harian tidak tersedia."
+
     if 'df_daily' in locals() and df_daily is not None:
         daily_cols = st.columns(4)
         daily_indicators = ['IHSG', 'Saham Daily', 'Obligasi Daily', 'Brent', 'WTI', 'CPO', 'Emas', 'Batubara', 'Natural Gas', 'Nikel']
@@ -270,6 +273,9 @@ if df_target is not None:
             color_ytd = "badge-red" if ytd < 0 else "badge-green"
             disp = f"{val:,.2f}" if val > 10 else f"{val:.2f}"
             
+            # --- MASUKKAN KE DALAM DAFTAR UNTUK AI ---
+            daily_summary_list.append(f"{col}: {disp} (DTD: {dtd:+.2f}%)")
+
             html = f"""
             <div class="glass-card" style="padding: 15px; margin-bottom: 10px;">
                 <div class="card-title">{col}</div>
@@ -281,6 +287,9 @@ if df_target is not None:
             """
             with daily_cols[idx % 4]: st.markdown(html, unsafe_allow_html=True)
             idx += 1
+            
+        if daily_summary_list:
+            daily_summary_str = " | ".join(daily_summary_list)
             
     st.markdown("<br>", unsafe_allow_html=True)
 
