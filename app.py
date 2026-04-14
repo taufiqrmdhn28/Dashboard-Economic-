@@ -29,8 +29,8 @@ if 'policy_cache' not in st.session_state:
         st.session_state.policy_cache = {}
 
 # Fungsi "Sidik Jari" AI SEKARANG MENGINGAT DATA HARIAN JUGA
-def make_signature(view, avg, target, probs, daily_info):
-    return f"{view}_{avg:.2f}_{target}_{probs}_{daily_info}"
+def make_signature(view, avg, target, probs):
+    return f"{view}_{avg:.2f}_{target}_{probs}"
 
 # ==========================================
 # 1. SETUP & DESIGN
@@ -230,10 +230,6 @@ if df_target is not None:
     # --- MONITORING DATA HARIAN (DTD & YTD) ---
     # ==========================================
     st.markdown("### 📈 Monitoring Data Harian")
-    
-    daily_summary_list = [] # <-- Tempat menampung data harian buat AI
-    daily_summary_str = "Data harian tidak tersedia."
-
     if 'df_daily' in locals() and df_daily is not None:
         daily_cols = st.columns(4)
         daily_indicators = ['IHSG', 'Saham Daily', 'Obligasi Daily', 'Brent', 'WTI', 'CPO', 'Emas', 'Batubara', 'Natural Gas', 'Nikel']
@@ -246,30 +242,22 @@ if df_target is not None:
             val = latest_row[col]
             date_obj = latest_row[date_col_daily]
             date_str = date_obj.strftime("%d %b %Y")
-            
             if len(valid_series) > 1:
                 prev_row = valid_series.iloc[-2]
                 val_prev = prev_row[col]
                 dtd = ((val - val_prev) / val_prev) * 100 if val_prev != 0 else 0
             else: dtd = 0
-                
             current_year = date_obj.year
             prev_year_data = valid_series[valid_series[date_col_daily].dt.year == current_year - 1]
-            
             if not prev_year_data.empty:
                 ytd_base_val = prev_year_data.iloc[-1][col]
                 ytd = ((val - ytd_base_val) / ytd_base_val) * 100 if ytd_base_val != 0 else 0
                 ytd_str = f"YTD: {ytd:+.2f}%"
             else:
                 ytd, ytd_str = 0, "YTD: -"
-                
             color_dtd = "badge-red" if dtd < 0 else "badge-green"
             color_ytd = "badge-red" if ytd < 0 else "badge-green"
             disp = f"{val:,.2f}" if val > 10 else f"{val:.2f}"
-            
-            # --- MASUKKAN KE DALAM MEMORI AI ---
-            daily_summary_list.append(f"{col}: {disp} (DTD: {dtd:+.2f}%, {ytd_str})")
-
             html = f"""
             <div class="glass-card" style="padding: 15px; margin-bottom: 10px;">
                 <div class="card-title">{col}</div>
@@ -281,10 +269,6 @@ if df_target is not None:
             """
             with daily_cols[idx % 4]: st.markdown(html, unsafe_allow_html=True)
             idx += 1
-            
-        if daily_summary_list:
-            daily_summary_str = " | ".join(daily_summary_list)
-
     st.markdown("<br>", unsafe_allow_html=True)
 
     # ==========================================
@@ -486,18 +470,16 @@ if df_target is not None:
     st.markdown('<div class="glass-card">', unsafe_allow_html=True)
 
     prob_str = ", ".join(probs) if probs else "None (Stabil)"
-    
-    # AI SEKARANG MENGUNCI DATA HARIAN JUGA SEBAGAI SIDIK JARI
-    signature = make_signature(selected_view, current_avg, current_target, prob_str, daily_summary_str)
+    signature = make_signature(selected_view, current_avg, current_target, prob_str)
 
     # CEK APAKAH SUDAH ADA CACHE
     if signature in st.session_state.policy_cache:
-        st.success("✅ Menggunakan hasil kebijakan sebelumnya (data harian & bulanan belum berubah)")
+        st.success("✅ Menggunakan hasil kebijakan sebelumnya (data belum berubah)")
         st.markdown(st.session_state.policy_cache[signature])
     else:
         if st.button("Generate Kebijakan Strategis (AI)"):
             genai.configure(api_key=USER_API_KEY)
-            with st.spinner('AI sedang mensimulasikan skenario ekonomi dan volatilitas pasar...'):
+            with st.spinner('AI sedang mensimulasikan skenario ekonomi...'):
                 try:
                     avail = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
                     model_name = next((m for m in avail if 'flash' in m), avail[0] if avail else None)
@@ -515,22 +497,18 @@ if df_target is not None:
 Anda berperan sebagai PERENCANA EKONOMI MAKRO BAPPENAS RI berbasis data monitoring.
 
 =====================
-KONTEKS DATA PDB & BULANAN
+KONTEKS DATA
 =====================
 Indikator: {selected_view}
 Rata-rata saat ini: {current_avg:.2f}%
 Target pertumbuhan 2026: {current_target}%
-Pelemahan Bulanan Terdeteksi: {prob_str}
-
-=====================
-DINAMIKA PASAR HARIAN
-=====================
-{daily_summary_str}
+Pelemahan YoY: {prob_str}
+Dinamika: Heatmap dan volatilitas harian.
 
 =====================
 TUGAS
 =====================
-1. Interpretasikan sinyal pelemahan bulanan dan kaitkan dengan pergerakan/kepanikan di dinamika pasar harian.
+1. Interpretasikan sinyal data di atas sebagai masalah ekonomi.
 2. Petakan ke mekanisme teori ekonomi (growth, labor, poverty, structural change).
 3. Berikan 5 rekomendasi kebijakan strategis yang spesifik dan actionable.
 4. Gabungkan mitigasi jangka pendek dan reformasi struktural.
@@ -540,7 +518,7 @@ TUGAS
 FORMAT WAJIB
 =====================
 Untuk setiap kebijakan:
-- Masalah ekonomi yang ditangani (Kaitan data makro & harian)
+- Masalah ekonomi yang ditangani
 - Mekanisme teori
 - Rekomendasi kebijakan actionable
 - Dampak jangka pendek
@@ -565,7 +543,5 @@ Dasar Akademis:
 
                 except Exception as e:
                     st.error(f"Error AI: {e}")
-
-    st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown('</div>', unsafe_allow_html=True)
