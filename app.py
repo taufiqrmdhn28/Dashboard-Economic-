@@ -467,7 +467,9 @@ if df_target is not None:
     st.markdown('<div class="glass-card">', unsafe_allow_html=True)
 
     prob_str = ", ".join(probs) if probs else "None (Stabil)"
-    signature = make_signature(selected_view, current_avg, current_target, prob_str)
+    
+    # AI MENGUNCI DATA HARIAN JUGA SEBAGAI SIDIK JARI
+    signature = make_signature(selected_view, current_avg, current_target, prob_str, daily_summary_str)
 
     # CEK APAKAH SUDAH ADA CACHE
     if signature in st.session_state.policy_cache:
@@ -494,13 +496,17 @@ if df_target is not None:
 Anda berperan sebagai PERENCANA EKONOMI MAKRO BAPPENAS RI berbasis data monitoring.
 
 =====================
-KONTEKS DATA
+KONTEKS DATA PDB & BULANAN
 =====================
 Indikator: {selected_view}
 Rata-rata saat ini: {current_avg:.2f}%
 Target pertumbuhan 2026: {current_target}%
-Pelemahan YoY: {prob_str}
-Dinamika: Heatmap dan volatilitas harian.
+Pelemahan YoY Terdeteksi: {prob_str}
+
+=====================
+DINAMIKA PASAR HARIAN TERBARU
+=====================
+{daily_summary_str}
 
 =====================
 TUGAS
