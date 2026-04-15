@@ -274,7 +274,7 @@ if df_target is not None:
             disp = f"{val:,.2f}" if val > 10 else f"{val:.2f}"
             
             # --- MASUKKAN KE DALAM DAFTAR UNTUK AI ---
-            daily_summary_list.append(f"{col}: {disp} (DTD: {dtd:+.2f}%)")
+            daily_summary_list.append(f"{col}: {disp} (DTD: {dtd:+.2f}%, {ytd_str})")
 
             html = f"""
             <div class="glass-card" style="padding: 15px; margin-bottom: 10px;">
@@ -512,8 +512,8 @@ if df_target is not None:
                         st.error("Gagal mendeteksi model. Cek API Key atau Region.")
                     else:
                         generation_config = genai.types.GenerationConfig(
-                            temperature=0,
-                            top_p=0.1
+                            temperature=0.4,
+                            top_p=0.8
                         )
                         model = genai.GenerativeModel(model_name)
 
@@ -534,13 +534,14 @@ DINAMIKA PASAR HARIAN TERBARU
 {daily_summary_str}
 
 =====================
-TUGAS
+TUGAS ANALISIS & SINTESIS
 =====================
-1. Interpretasikan sinyal data di atas sebagai masalah ekonomi.
-2. Petakan ke mekanisme teori ekonomi (growth, labor, poverty, structural change).
-3. Berikan 5 rekomendasi kebijakan strategis yang spesifik dan actionable.
-4. Gabungkan mitigasi jangka pendek dan reformasi struktural.
-5. Setiap kebijakan wajib berbasis seminal paper / jurnal bereputasi.
+1. ANALISIS PARADOKS: Jangan hanya melihat data harian (DTD). Kontraskan dengan tren tahun berjalan (YTD). (Misal: Jika komoditas turun DTD tapi naik tajam YTD, apa bahaya inflasi tersembunyinya bagi daya beli / indikator makro yang sedang melemah?).
+2. TRANSMISI KEBIJAKAN: Hubungkan secara logis bagaimana volatilitas pasar harian ini akan merembet dan memperparah pelemahan di sektor riil (indikator YoY yang merah).
+3. 5 REKOMENDASI KEBIJAKAN INOVATIF:
+   - 2 Kebijakan "Quick Win" (Taktis untuk meredam syok pasar jangka pendek).
+   - 2 Kebijakan Reformasi Struktural (Fokus ke industrialisasi, efisiensi, atau *green economy*).
+   - 1 Kebijakan Unorthodox / *Out-of-the-box* (Solusi radikal namun rasional yang jarang dipikirkan birokrat konvensional).
 
 =====================
 FORMAT WAJIB
