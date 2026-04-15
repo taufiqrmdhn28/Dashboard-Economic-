@@ -30,9 +30,11 @@ if 'policy_cache' not in st.session_state:
     else:
         st.session_state.policy_cache = {}
 
-# ---> FUNGSI INI WAJIB ADA DI ATAS BIAR GAK ERROR NameError <---
-def make_signature(view, avg, target, probs, daily_info):
-    return f"{view}_{avg:.2f}_{target}_{probs}_{daily_info}"
+# FUNGSI SIGNATURE: Mengingat Data Makro (Lengkap) & Data Harian
+def make_signature(view, avg, target, monthly_info, daily_info):
+    raw_str = f"{view}_{avg:.2f}_{target}_{monthly_info}_{daily_info}"
+    import hashlib
+    return hashlib.md5(raw_str.encode()).hexdigest()
 
 # ==========================================
 # 1. SETUP & DESIGN
@@ -322,7 +324,8 @@ if df_target is not None:
     df_makro = df_makro.sort_values(by='Tanggal')
     
     cols = st.columns(4)
-    probs = []
+    monthly_summary_list = [] # <-- WADAH BARU UNTUK REKAP DATA BULANAN AI
+    monthly_summary_str = "Data bulanan tidak tersedia."
     
     indicator_cols = [c for c in df_makro.columns if c != 'Tanggal']
 
@@ -358,7 +361,6 @@ if df_target is not None:
 
         # --- AMBIL ATURAN DARI ATURAN_WARNA ---
         rule_naik_bagus = ATURAN_WARNA.get(col, True)
-        
         is_level_indicator = any(k in col for k in ["PMI", "Inflasi", "Suku Bunga", "Nilai Tukar", "Indeks Keyakinan Konsumen"])
 
         # FORMAT TAMPILAN DEEP DIVE
@@ -383,7 +385,10 @@ if df_target is not None:
         color_1 = "badge-red" if is_bad_mtm else "badge-green"
         color_2 = "badge-red" if is_bad_yoy else "badge-green"
         
-        if is_bad_mtm or is_bad_yoy: probs.append(f"{col} (Weak Trend)")
+        # --- REKAP DATA BULANAN KE DALAM WADAH AI (MtM dan YoY Lengkap) ---
+        status_mtm = "Melemah" if is_bad_mtm else "Membaik"
+        status_yoy = "Melemah" if is_bad_yoy else "Membaik"
+        monthly_summary_list.append(f"[{col}] Data: {disp} | {badge_1} ({status_mtm}) | {badge_2} ({status_yoy})")
 
         html = f"""
         <div class="glass-card" style="padding: 15px; margin-bottom: 10px;">
@@ -395,6 +400,9 @@ if df_target is not None:
         </div>
         """
         with cols[i%4]: st.markdown(html, unsafe_allow_html=True)
+        
+    if monthly_summary_list:
+        monthly_summary_str = "\n".join(monthly_summary_list)
 
    # ==========================================
     # --- HEATMAP BULANAN (YOY TRACKER) ---
@@ -403,6 +411,9 @@ if df_target is not None:
     st.markdown('<div class="glass-card">', unsafe_allow_html=True)
     df_hm = df_makro[df_makro['Tanggal'] >= '2025-01-01'].copy()
     
+    heatmap_summary_list = [] # <-- WADAH BARU UNTUK REKAP HEATMAP
+    heatmap_summary_str = "Data Heatmap tidak tersedia."
+    
     if not df_hm.empty:
         dates_hm = df_hm['Tanggal'].tolist()
         x_labels = df_hm['Tanggal'].dt.strftime('%b %Y').tolist()
@@ -410,22 +421,17 @@ if df_target is not None:
         
         for col in indicator_cols:
             col_z, col_text = [], []
-            
-            # AMBIL ATURAN DARI KAMUS SAKTI (Naik=Hijau, Turun=Merah)
             rule_naik_bagus = ATURAN_WARNA.get(col.strip(), True)
-            
             is_level_indicator = any(k in col for k in ["PMI", "Inflasi", "Suku Bunga", "Nilai Tukar", "Indeks Keyakinan Konsumen"])
                 
             for d in dates_hm:
                 curr_row = df_makro[df_makro['Tanggal'] == d]
                 val = curr_row[col].values[0] if not curr_row.empty else np.nan
                 
-                # Tarik Data Tahun Lalu
                 prev_d = d - pd.DateOffset(years=1)
                 prev_row = df_makro[(df_makro['Tanggal'].dt.year == prev_d.year) & (df_makro['Tanggal'].dt.month == prev_d.month)]
                 val_prev = prev_row[col].values[0] if not prev_row.empty else np.nan
                 
-                # Tarik Data Dua Tahun Lalu (Untuk membandingkan pertumbuhan YoY tahun lalu)
                 prev_prev_d = prev_d - pd.DateOffset(years=1)
                 prev_prev_row = df_makro[(df_makro['Tanggal'].dt.year == prev_prev_d.year) & (df_makro['Tanggal'].dt.month == prev_prev_d.month)]
                 val_prev_prev = prev_prev_row[col].values[0] if not prev_prev_row.empty else np.nan
@@ -435,36 +441,39 @@ if df_target is not None:
                     col_text.append("-")
                 else:
                     if is_level_indicator:
-                        # 1. INDIKATOR LEVEL (PMI, IKK, dll)
-                        # Teks: Nilai Asli
                         txt = f"{val:,.2f}" if val > 1000 else f"{val:.2f}"
-                        # Warna: Selisih poin tahun ini vs tahun lalu
                         diff = val - val_prev
                     else:
-                        # 2. INDIKATOR PERTUMBUHAN (Ekspor, Mobil, Kredit, Motor, dll)
-                        # Teks: Pertumbuhan YoY Tahun Ini
                         yoy_curr = (val - val_prev) / abs(val_prev) * 100 if val_prev != 0 else 0
                         txt = f"{yoy_curr:+.2f}%"
-                        
-                        # Warna: Selisih Momentum (YoY Tahun Ini dikurangi YoY Tahun Lalu)
                         if pd.isna(val_prev_prev):
-                            diff = yoy_curr # Default jika data 2 tahun lalu tidak ada
+                            diff = yoy_curr
                         else:
                             yoy_prev = (val_prev - val_prev_prev) / abs(val_prev_prev) * 100 if val_prev_prev != 0 else 0
                             diff = yoy_curr - yoy_prev
                         
-                    # EKSEKUSI WARNA MUTLAK
+                    is_green = False
                     if diff == 0: 
                         col_z.append(0) 
                     elif rule_naik_bagus: 
-                        col_z.append(1 if diff > 0 else -1) # Perbaikan Momentum -> Hijau, Melambat -> Merah
+                        is_green = diff > 0
+                        col_z.append(1 if is_green else -1)
                     else: 
-                        col_z.append(1 if diff < 0 else -1) # Perbaikan Momentum -> Merah (Khusus Inflasi, dll)
+                        is_green = diff < 0
+                        col_z.append(1 if is_green else -1)
                         
                     col_text.append(txt)
+                    
+                    # Cuma masukkan bulan terbaru ke AI untuk tau sentimen momentum
+                    if d == dates_hm[-1]:
+                        sentimen = "Positif (Hijau)" if is_green else "Negatif (Merah)"
+                        heatmap_summary_list.append(f"{col}: Momentum {sentimen} ({txt})")
             
             z_data.append(col_z)
             text_data.append(col_text)
+            
+        if heatmap_summary_list:
+            heatmap_summary_str = " | ".join(heatmap_summary_list)
             
         fig_hm = go.Figure(data=go.Heatmap(
             z=z_data, x=x_labels, y=indicator_cols, text=text_data,
@@ -491,19 +500,16 @@ if df_target is not None:
     st.markdown("### 🧠 AI Policy Generator")
     st.markdown('<div class="glass-card">', unsafe_allow_html=True)
 
-    prob_str = ", ".join(probs) if probs else "None (Stabil)"
-    
-    # AI MENGUNCI DATA HARIAN JUGA SEBAGAI SIDIK JARI
-    signature = make_signature(selected_view, current_avg, current_target, prob_str, daily_summary_str)
+    # SIGNATURE MEMBACA DATA BULANAN & HARIAN LENGKAP
+    signature = make_signature(selected_view, current_avg, current_target, monthly_summary_str, daily_summary_str)
 
-    # CEK APAKAH SUDAH ADA CACHE
     if signature in st.session_state.policy_cache:
-        st.success("✅ Menggunakan hasil kebijakan sebelumnya (data belum berubah)")
+        st.success("✅ Menggunakan hasil kebijakan sebelumnya (Data Harian & Makro belum berubah)")
         st.markdown(st.session_state.policy_cache[signature])
     else:
         if st.button("Generate Kebijakan Strategis (AI)"):
             genai.configure(api_key=USER_API_KEY)
-            with st.spinner('AI sedang mensimulasikan skenario ekonomi...'):
+            with st.spinner('AI sedang mensimulasikan skenario ekonomi dan volatilitas pasar...'):
                 try:
                     avail = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
                     model_name = next((m for m in avail if 'flash' in m), avail[0] if avail else None)
@@ -512,51 +518,56 @@ if df_target is not None:
                         st.error("Gagal mendeteksi model. Cek API Key atau Region.")
                     else:
                         generation_config = genai.types.GenerationConfig(
-                            temperature=0.4,
+                            temperature=0.4, # <-- AI LEBIH KREATIF & OUT-OF-THE-BOX
                             top_p=0.8
                         )
                         model = genai.GenerativeModel(model_name)
 
                         prompt = f"""
-Anda berperan sebagai PERENCANA EKONOMI MAKRO BAPPENAS RI berbasis data monitoring.
+Anda berperan sebagai CHIEF ECONOMIST & AHLI GLOBAL MACRO di Bappenas RI. 
+Gaya analisis Anda tajam, melihat *blind-spots*, dan setara dengan analis di *elite hedge fund* internasional.
 
 =====================
-KONTEKS DATA PDB & BULANAN
+KONDISI PDB & PERTUMBUHAN
 =====================
-Indikator: {selected_view}
-Rata-rata saat ini: {current_avg:.2f}%
-Target pertumbuhan 2026: {current_target}%
-Pelemahan YoY Terdeteksi: {prob_str}
+Fokus Indikator: {selected_view}
+Rata-rata saat ini: {current_avg:.2f}% (Target APBN: {current_target}%)
 
 =====================
-DINAMIKA PASAR HARIAN TERBARU
+DINAMIKA SEKTOR RIIL BULANAN (MtM & YoY)
+=====================
+Berikut adalah rincian kinerja indikator makro bulanan terakhir:
+{monthly_summary_str}
+
+=====================
+MOMENTUM BULANAN (HEATMAP YOY)
+=====================
+Sentimen perbaikan/perlambatan (Heatmap bulan terbaru):
+{heatmap_summary_str}
+
+=====================
+VOLATILITAS PASAR HARIAN (DTD & YTD)
 =====================
 {daily_summary_str}
 
 =====================
 TUGAS ANALISIS & SINTESIS
 =====================
-1. ANALISIS PARADOKS: Jangan hanya melihat data harian (DTD). Kontraskan dengan tren tahun berjalan (YTD). (Misal: Jika komoditas turun DTD tapi naik tajam YTD, apa bahaya inflasi tersembunyinya bagi daya beli / indikator makro yang sedang melemah?).
-2. TRANSMISI KEBIJAKAN: Hubungkan secara logis bagaimana volatilitas pasar harian ini akan merembet dan memperparah pelemahan di sektor riil (indikator YoY yang merah).
+1. ANALISIS PARADOKS & PERSILANGAN: 
+   - Kontraskan data jangka pendek (DTD/MtM) dengan data jangka panjang (YTD/YoY).
+   - Contoh: Jika komoditas turun secara DTD namun masih naik tajam secara YTD, atau jika ekspor naik MtM namun melambat YoY. Temukan "hidden danger" atau "hidden opportunity" dari persilangan data ini.
+2. TRANSMISI KEBIJAKAN: Hubungkan secara logis bagaimana volatilitas pasar harian (IHSG, Nilai Tukar, Komoditas) sedang merembet dan menekan sektor riil bulanan.
 3. 5 REKOMENDASI KEBIJAKAN INOVATIF:
-   - 2 Kebijakan "Quick Win" (Taktis untuk meredam syok pasar jangka pendek).
-   - 2 Kebijakan Reformasi Struktural (Fokus ke industrialisasi, efisiensi, atau *green economy*).
-   - 1 Kebijakan Unorthodox / *Out-of-the-box* (Solusi radikal namun rasional yang jarang dipikirkan birokrat konvensional).
+   - 2 Kebijakan "Quick Win" (Taktis meredam kepanikan pasar/syok inflasi jangka pendek).
+   - 2 Kebijakan Reformasi Struktural (Fokus ke efisiensi/industrialisasi sektor yang merah YoY-nya).
+   - 1 Kebijakan Unorthodox / Out-of-the-box (Solusi radikal namun rasional yang mendobrak kebiasaan birokrat konvensional).
 
 =====================
-FORMAT WAJIB
+FORMAT WAJIB UNTUK SETIAP KEBIJAKAN
 =====================
-Untuk setiap kebijakan:
-- Masalah ekonomi yang ditangani
-- Mekanisme teori
-- Rekomendasi kebijakan actionable
-- Dampak jangka pendek
-- Dampak struktural jangka panjang
-
-Dasar Akademis:
-[Nomor]. Dasar Teori
-- Penulis (Tahun)
-- Link Scholar: https://scholar.google.com/scholar?q=kata+kunci
+- Nama Kebijakan: (Actionable dan Tegas)
+- Rasionalisasi Macro: (Penjelasan mengapa ini menyelesaikan masalah di Sektor Riil maupun Pasar Harian)
+- Dasar Akademis: [Nomor]. Dasar Teori - Penulis (Tahun) - Link Scholar: https://scholar.google.com/scholar?q=kata+kunci
 """
 
                         res = model.generate_content(prompt, generation_config=generation_config)
