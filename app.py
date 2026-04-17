@@ -203,16 +203,25 @@ def run_full_dfm_replication():
                 
         if not target_jobs: return pd.DataFrame()
 
-        # 5. Eksekusi Iterasi
+       # 5. Eksekusi Iterasi
         results_table = []
         for actual_v_date, v_date_base in target_jobs:
             obs_cutoff = v_date_base.replace(day=1)
             ref_q = pd.Period(actual_v_date, freq='Q')
             
             v_data = build_ragged_vintage(data_full, df_cal, indicator_col, vintage_cols, actual_v_date, obs_cutoff).dropna(axis=1, how='all')
-            end_m = v_data.drop(columns=[target_var])
-            end_q = data_full[[target_var]]
             
+            # PISAHKAN BULANAN DAN KUARTALAN (FIX ERROR FREKUENSI)
+            end_m = v_data.drop(columns=[target_var], errors='ignore')
+            
+            # Paksa index target_var menjadi Kuartalan (Q atau QE) agar DFM tidak error
+            q_freq = "QE" if pd.__version__ >= "2.2.0" else "Q"
+            if target_var in v_data.columns:
+                end_q = v_data[[target_var]].resample(q_freq).last()
+            else:
+                end_q = data_full.loc[data_full.index <= obs_cutoff, [target_var]].resample(q_freq).last()
+            
+            # Jalankan Model
             model = DynamicFactorMQ(endog=end_m, endog_quarterly=end_q, k_factors=1, factor_orders=1, idiosyncratic_ar=1, standardize=True)
             res = model.fit(method='em', maxiter=1000, tolerance=1e-5, disp=False)
             means = res.get_prediction(end=res.model.nobs + 24).predicted_mean
@@ -229,9 +238,6 @@ def run_full_dfm_replication():
             })
 
         return pd.DataFrame(results_table)
-    except Exception as e:
-        st.error(f"Error Replikasi DFM: {e}")
-        return pd.DataFrame()
 
 # ==========================================
 # 4. EXECUTION DASHBOARD PDB
