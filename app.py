@@ -152,7 +152,7 @@ def calculate_annual_nowcast(pred_means, target_var, cutoff):
     vals = [v for v in vals if pd.notna(v)]
     return np.mean(vals) if len(vals) == 4 else np.nan
 
-@st.cache_data(show_spinner="⚙️ DFM Nowcasting: Memproses 4 Titik Kalender Terakhir di Tiap Kuartal 2026...")
+@st.cache_data(show_spinner="⚙️ DFM Engine: Menghasilkan Histori Prediksi 2023-2026 & Proyeksi Akhir...")
 def run_full_dfm_replication():
     try:
         # 1. Load Data
@@ -177,44 +177,34 @@ def run_full_dfm_replication():
                 s = apply_matlab_transformation(df_q_raw[name], row['log'], row['QoQ'], row['YoY'], 'Q')
                 processed_data[name] = s
 
-        # 2. RATA-KAN FREKUENSI KE 'MS'
-        data_full = pd.DataFrame(processed_data).replace([np.inf, -np.inf], np.nan)
+        data_full = pd.DataFrame(processed_data).replace([np.inf, -np.inf], np.nan).sort_index()
         data_full.index = pd.to_datetime(data_full.index)
         data_full = data_full.resample('MS').first() 
         target_var = 'RGDP_growth'
-        if target_var not in data_full.columns: return pd.DataFrame()
         
-        # 3. Kumpulkan Jadwal Rilis KHUSUS TAHUN 2026
+        # 2. Kumpulkan Jadwal Rilis (DARI 2023 SAMPAI 2026)
         jobs = []
         seen = set()
         for vc in vintage_cols:
             col_name = vc.strftime('%Y-%m-%d 00:00:00') if vc.strftime('%Y-%m-%d 00:00:00') in df_cal.columns else df_cal.columns[2 + vintage_cols.index(vc)]
             release_dates = pd.to_datetime(df_cal[col_name], errors="coerce").dropna().unique()
             for rd in sorted(release_dates):
-                if rd.year == 2026 and (rd, vc) not in seen:
+                # -----> UBAH DISINI: HISTORI DARI 2023 <-----
+                if 2023 <= rd.year <= 2026 and (rd, vc) not in seen:
                     seen.add((rd, vc)); jobs.append((rd, vc))
         jobs.sort(key=lambda x: x[0])
         
-        # 4. Filter: Ambil Tanggal Paling Terakhir di Tiap Kuartal (Q1, Q2, Q3, Q4)
-        target_jobs = []
-        for q in [1, 2, 3, 4]:
-            q_jobs = [j for j in jobs if j[0].quarter == q]
-            if q_jobs: target_jobs.append(q_jobs[-1]) 
-                
-        if not target_jobs: return pd.DataFrame()
+        if not jobs: return pd.DataFrame()
 
-        # 5. Eksekusi Iterasi
+        # 3. Eksekusi Iterasi
         results_table = []
-        for actual_v_date, v_date_base in target_jobs:
+        for actual_v_date, v_date_base in jobs:
             obs_cutoff = v_date_base.replace(day=1)
             ref_q = pd.Period(actual_v_date, freq='Q')
             
             v_data = build_ragged_vintage(data_full, df_cal, indicator_col, vintage_cols, actual_v_date, obs_cutoff).dropna(axis=1, how='all')
-            
-            # PISAHKAN BULANAN DAN KUARTALAN (FIX ERROR FREKUENSI)
             end_m = v_data.drop(columns=[target_var], errors='ignore')
             
-            # Paksa index target_var menjadi Kuartalan (Q atau QE) agar DFM tidak error
             q_freq = "QE" if pd.__version__ >= "2.2.0" else "Q"
             if target_var in v_data.columns:
                 end_q = v_data[[target_var]].resample(q_freq).last()
@@ -222,7 +212,7 @@ def run_full_dfm_replication():
                 end_q = data_full.loc[data_full.index <= obs_cutoff, [target_var]].resample(q_freq).last()
             
             model = DynamicFactorMQ(endog=end_m, endog_quarterly=end_q, k_factors=1, factor_orders=1, idiosyncratic_ar=1, standardize=True)
-            res = model.fit(method='em', maxiter=1000, tolerance=1e-5, disp=False)
+            res = model.fit(method='em', maxiter=500, tolerance=1e-5, disp=False)
             means = res.get_prediction(end=res.model.nobs + 24).predicted_mean
             
             results_table.append({
