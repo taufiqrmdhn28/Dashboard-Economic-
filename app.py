@@ -109,7 +109,7 @@ def load_daily_data():
 df_daily, date_col_daily = load_daily_data()
 
 # ==========================================
-# 3. ENGINE DFM NOWCASTING (MENGGANTIKAN HOLT-WINTERS)
+# 3. ENGINE DFM NOWCASTING (FULL REPLICATION MODE)
 # ==========================================
 def apply_matlab_transformation(series, j1, j2, j3, freq='M'):
     out = series.copy().astype(float)
@@ -123,78 +123,107 @@ def apply_matlab_transformation(series, j1, j2, j3, freq='M'):
         out = out.diff(lags)
     return out
 
-def get_prediction_value(pred_means, target, year, quarter):
+def build_ragged_vintage(data_full, df_cal, indicator_col, vintage_cols, v_date, obs_cutoff):
+    vintage = data_full[data_full.index <= obs_cutoff].copy()
+    vcols_sorted = sorted([c for c in vintage_cols if c <= obs_cutoff])
+    v_col_key = vcols_sorted[-1] if vcols_sorted else None
+    if v_col_key is None: return vintage
+    for _, row in df_cal.iterrows():
+        ind = row[indicator_col]
+        if ind not in vintage.columns: continue
+        rd = pd.to_datetime(row[v_col_key], errors="coerce")
+        if pd.notna(rd) and rd > v_date:
+            mask_from = rd.replace(day=1) - pd.DateOffset(months=1)
+            vintage.loc[vintage.index >= mask_from, ind] = np.nan
+    return vintage
+
+def get_prediction_value(pred_means, target, quarter):
     if target not in pred_means.columns: return np.nan
-    # Cari nilai tepat di bulan akhir kuartal (Bulan 3, 6, 9, 12)
-    target_month = quarter * 3 
-    try:
-        mask = (pred_means.index.year == year) & (pred_means.index.month == target_month)
-        res = pred_means[mask]
-        if not res.empty:
-            return float(res[target].iloc[0])
-    except: pass
+    q_end = quarter.to_timestamp(how="end").normalize()
+    q_start = quarter.to_timestamp(how="start")
+    for candidate in [q_start, q_end, q_start.replace(day=1), q_end.replace(day=1)]:
+        if candidate in pred_means.index:
+            return float(pred_means.loc[candidate, target])
     return np.nan
 
-@st.cache_data(show_spinner="⚙️ Engine DFM sedang mensimulasikan Nowcasting (Algoritma EM)...")
-def run_dfm_engine_for_dashboard():
+def calculate_annual_nowcast(pred_means, target_var, cutoff):
+    year = cutoff.year
+    vals = [get_prediction_value(pred_means, target_var, pd.Period(year=year, quarter=q, freq='Q')) for q in range(1, 5)]
+    vals = [v for v in vals if pd.notna(v)]
+    return np.mean(vals) if len(vals) == 4 else np.nan
+
+@st.cache_data(show_spinner="⚙️ Menjalankan Replikasi DFM Full (Mungkin butuh beberapa menit)...")
+def run_full_dfm_replication():
     try:
-        # 1. Load Data Mentah
+        # 1. Load Data
         df_m_raw = pd.read_excel(file_adb, sheet_name='MonthlyData', index_col=0, parse_dates=True)
         df_q_raw = pd.read_excel(file_adb, sheet_name='QuarterlyData', index_col=0, parse_dates=True)
+        df_cal = pd.read_excel(file_adb, sheet_name='Calendar')
         info_m = pd.read_excel(file_adb, sheet_name='InfoM')
         info_q = pd.read_excel(file_adb, sheet_name='InfoQ')
         
-        # 2. Transformasi Sesuai Aturan INO
+        if "INCLUDE" in df_cal.columns: df_cal = df_cal[df_cal["INCLUDE"] == 1].reset_index(drop=True)
+        indicator_col = df_cal.columns[0]
+        vintage_cols = [pd.to_datetime(c) for c in df_cal.columns[2:]]
+
         processed_data = {}
         for _, row in info_m[info_m['INCLUDED'] == 1].iterrows():
             name = row['Indicator Code']
             if name in df_m_raw.columns:
                 processed_data[name] = apply_matlab_transformation(df_m_raw[name], row['log'], row['MoM'], row['YoY'], 'M')
-                
         for _, row in info_q[info_q['INCLUDED'] == 1].iterrows():
             name = row['Indicator Code']
             if name in df_q_raw.columns:
-                # Biarkan kuartalan natural sesuai format Awal Bulan (MS)
-                processed_data[name] = apply_matlab_transformation(df_q_raw[name], row['log'], row['QoQ'], row['YoY'], 'Q')
+                s = apply_matlab_transformation(df_q_raw[name], row['log'], row['QoQ'], row['YoY'], 'Q')
+                processed_data[name] = s.reindex(pd.date_range(start=s.index.min(), end=s.index.max()+pd.offsets.MonthEnd(3), freq="MS"))
 
-        # 3. Gabungkan Data & RATA-KAN FREKUENSI KE 'MS' (MONTH-START)
-        data_full = pd.DataFrame(processed_data).replace([np.inf, -np.inf], np.nan)
-        data_full.index = pd.to_datetime(data_full.index)
-        data_full = data_full.resample('MS').first() # INI KUNCI AGAR STATSMODELS TIDAK CRASH!
-        
+        data_full = pd.DataFrame(processed_data).replace([np.inf, -np.inf], np.nan).sort_index()
         target_var = 'RGDP_growth'
-        if target_var not in data_full.columns:
-            return [5.1, 5.2, 5.3, 5.4]
-            
-        # 4. Pisahkan Endog Bulanan & Kuartalan
-        # DFM menerima endog_quarterly di frekuensi bulanan asalkan ada di bln 3,6,9,12
-        endog_monthly = data_full.drop(columns=[target_var])
-        endog_quarterly = data_full[[target_var]] 
-
-        # 5. Eksekusi Model DFM
-        model = DynamicFactorMQ(
-            endog=endog_monthly,
-            endog_quarterly=endog_quarterly,
-            k_factors=1, factor_orders=1, idiosyncratic_ar=1, standardize=True
-        )
-        res = model.fit(method='em', maxiter=1000, tolerance=1e-6, disp=False)
         
-        # 6. Proyeksi Jauh ke Depan (36 bulan untuk menembus Q4 2026)
-        predict = res.get_prediction(end=res.model.nobs + 36)
-        means = predict.predicted_mean
-
-        # 7. Ambil Hasil untuk 2026
-        preds = []
-        for q in range(1, 5):
-            val = get_prediction_value(means, target_var, 2026, q)
-            preds.append(val if pd.notna(val) else 5.0) 
-            
-        return preds
+        # 2. Persiapan Iterasi (Seperti di Colab)
+        start_eval_dt = pd.to_datetime('2023-01-01') # Mulai histori rilis dari 2023
+        jobs = []
+        seen = set()
+        for vc in vintage_cols:
+            col_name = vc.strftime('%Y-%m-%d 00:00:00') if vc.strftime('%Y-%m-%d 00:00:00') in df_cal.columns else df_cal.columns[2 + vintage_cols.index(vc)]
+            release_dates = pd.to_datetime(df_cal[col_name], errors="coerce").dropna().unique()
+            for rd in sorted(release_dates):
+                if rd >= start_eval_dt and (rd, vc) not in seen:
+                    seen.add((rd, vc)); jobs.append((rd, vc))
         
+        jobs.sort(key=lambda x: x[0])
+        results_table = []
+
+        # Loop Vintage (Hanya ambil 10-15 terakhir agar dashboard tidak timeout, atau semua jika ingin full)
+        # Untuk performa dashboard, kita ambil vintage terbaru saja untuk loop cepat
+        for actual_v_date, v_date_base in jobs[-20:]: # Ambil 20 rilis terakhir agar histori rilis terlihat
+            obs_cutoff = v_date_base.replace(day=1)
+            ref_q = pd.Period(actual_v_date, freq='Q')
+            v_data = build_ragged_vintage(data_full, df_cal, indicator_col, vintage_cols, actual_v_date, obs_cutoff).dropna(axis=1, how='all')
+            
+            end_m = v_data.drop(columns=[target_var])
+            q_freq = "QE" if pd.__version__ >= "2.2.0" else "Q"
+            end_q = data_full.loc[data_full.index <= obs_cutoff, target_var].resample(q_freq).last().dropna()
+            
+            model = DynamicFactorMQ(endog=end_m, endog_quarterly=end_q, k_factors=1, factor_orders=1, idiosyncratic_ar=1, standardize=True)
+            res = model.fit(method='em', maxiter=500, tolerance=1e-5, disp=False) # maxiter dikurangi sedikit biar lebih cepat
+            means = res.get_prediction(end=res.model.nobs + 12).predicted_mean
+            
+            results_table.append({
+                'Day Prediction': actual_v_date,
+                'Reference Quarter': ref_q.strftime('%YQ%q'),
+                'Backcast': get_prediction_value(means, target_var, ref_q - 1),
+                'Nowcast': get_prediction_value(means, target_var, ref_q),
+                'Forecast': get_prediction_value(means, target_var, ref_q + 1),
+                '2-step': get_prediction_value(means, target_var, ref_q + 2),
+                '3-step': get_prediction_value(means, target_var, ref_q + 3),
+                'Annual Nowcast': calculate_annual_nowcast(means, target_var, actual_v_date)
+            })
+
+        return pd.DataFrame(results_table)
     except Exception as e:
-        # Menampilkan pop-up error jika sewaktu-waktu format data berubah lagi
-        st.error(f"Error Engine DFM: {e}")
-        return [5.1, 5.2, 5.3, 5.4]
+        st.error(f"Error Replikasi DFM: {e}")
+        return pd.DataFrame()
 
 # ==========================================
 # 4. EXECUTION DASHBOARD PDB
@@ -213,7 +242,21 @@ if df_target is not None:
         combined_2025.append(val)
 
     t_2026 = df_target[df_target['Tahun'] == 2026]['Target'].values[0] if 2026 in df_target['Tahun'].values else 5.4
-    preds_2026 = run_dfm_engine_for_dashboard()
+    df_full_results = run_full_dfm_replication()
+    
+    if not df_full_results.empty:
+        # Ambil baris terakhir (vintage paling baru) untuk ditampilkan di grafik
+        latest_row = df_full_results.iloc[-1]
+        
+        # Susun prediksi untuk chart
+        preds_2026 = [
+            latest_row['Nowcast'], 
+            latest_row['Forecast'], 
+            latest_row['2-step'], 
+            latest_row['3-step']
+        ]
+    else:
+        preds_2026 = [5.1, 5.2, 5.3, 5.4]
 
     real_2026 = [None, None, None, None]
     now_2026 = preds_2026
@@ -285,6 +328,20 @@ if df_target is not None:
 
     st.markdown('<div class="glass-card">', unsafe_allow_html=True)
     st.plotly_chart(fig, use_container_width=True)
+    
+    # --- TOMBOL DOWNLOAD HASIL REPLIKASI (EXCEL) ---
+    if not df_full_results.empty:
+        import io
+        buffer = io.BytesIO()
+        with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+            df_full_results.to_excel(writer, index=False, sheet_name='Nowcast Results')
+        
+        st.download_button(
+            label="📥 Download Full Nowcast Results (Excel)",
+            data=buffer.getvalue(),
+            file_name="Replikasi_Final_MATLAB_Elaborated.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
     st.markdown('</div>', unsafe_allow_html=True)
 
     # ==========================================
