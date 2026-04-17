@@ -731,18 +731,17 @@ FORMAT WAJIB
             import markdown
             
             # 1. JALUR NINJA: Ubah grafik langsung jadi elemen HTML Interaktif (Bypass Kaleido)
-            # Ini bikin grafiknya tetep hidup di laporan dan anti-error!
             chart_html = fig.to_html(full_html=False, include_plotlyjs='cdn', default_height='450px')
             
             # 2. Render Teks Markdown AI ke HTML Standard
             html_policy = markdown.markdown(final_policy_text)
             
             # Perbaiki tampilan list/ul dari Markdown agar lebih rapi di HTML
-            html_policy = html_policy.replace("<ul>", "<ul style='padding-left: 20px; color: #374151;'>")
-            html_policy = html_policy.replace("<li>", "<li style='margin-bottom: 10px;'>")
-            html_policy = html_policy.replace("<h3>", "<h3 style='color: #1e3a8a; border-bottom: 1px solid #e5e7eb; padding-bottom:5px; margin-top:25px;'>")
+            html_policy = html_policy.replace("<ul>", "<ul style='padding-left: 20px; color: #334155;'>")
+            html_policy = html_policy.replace("<li>", "<li style='margin-bottom: 12px;'>")
+            html_policy = html_policy.replace("<h3>", "<h3 style='color: #1e40af; border-bottom: 1px solid #bfdbfe; padding-bottom: 10px; margin-top: 25px;'>")
             
-            # 3. Bikin Template HTML/CSS Premium (Estetik McKinsey/NotebookLM)
+            # 3. Bikin Template HTML/CSS Premium (SUPER GLOW-UP ALA KONSULTAN)
             html_template = f"""
             <!DOCTYPE html>
             <html lang="id">
@@ -929,3 +928,17 @@ FORMAT WAJIB
             </body>
             </html>
             """
+            
+            # 4. Tombol Download HTML
+            st.download_button(
+                label="📥 Download Executive Brief (.html)",
+                data=html_template,
+                file_name="Executive_Brief_Bappenas.html",
+                mime="text/html",
+                type="primary"
+            )
+            
+        except Exception as e:
+            st.warning(f"Gagal menyiapkan dokumen HTML. Error detail: {e}")
+
+    st.markdown('</div>', unsafe_allow_html=True)
