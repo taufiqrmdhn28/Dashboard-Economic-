@@ -638,17 +638,21 @@ if df_target is not None:
     st.markdown('</div>', unsafe_allow_html=True)
     
     # ==========================================
-    # --- AI ADVISOR ---
+    # --- AI ADVISOR & NOTEBOOKLM EXPORT ---
     # ==========================================
     st.markdown("### 🧠 AI Policy Generator")
     st.markdown('<div class="glass-card">', unsafe_allow_html=True)
 
-    # SIGNATURE MEMBACA DATA BULANAN & HARIAN LENGKAP
     signature = make_signature(selected_view, current_avg, current_target, monthly_summary_str, daily_summary_str)
+    
+    # Variabel penampung teks untuk dimasukkan ke laporan
+    final_policy_text = ""
 
+    # Cek apakah sudah ada cache dari AI
     if signature in st.session_state.policy_cache:
         st.success("✅ Menggunakan hasil kebijakan sebelumnya (Data Harian & Makro belum berubah)")
-        st.markdown(st.session_state.policy_cache[signature])
+        final_policy_text = st.session_state.policy_cache[signature]
+        st.markdown(final_policy_text)
     else:
         if st.button("Generate Kebijakan Strategis (AI)"):
             genai.configure(api_key=USER_API_KEY)
@@ -657,15 +661,11 @@ if df_target is not None:
                     avail = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
                     model_name = next((m for m in avail if 'flash' in m), avail[0] if avail else None)
 
-                    if not model_name:
-                        st.error("Gagal mendeteksi model. Cek API Key atau Region.")
+                    if not model_name: 
+                        st.error("Gagal mendeteksi model. Cek API Key.")
                     else:
-                        generation_config = genai.types.GenerationConfig(
-                            temperature=0.4, # <-- AI LEBIH KREATIF & OUT-OF-THE-BOX
-                            top_p=0.8
-                        )
+                        generation_config = genai.types.GenerationConfig(temperature=0.4, top_p=0.8)
                         model = genai.GenerativeModel(model_name)
-
                         prompt = f"""
 Anda berperan sebagai CHIEF ECONOMIST & AHLI GLOBAL MACRO di Bappenas RI. 
 Gaya analisis Anda tajam, melihat *blind-spots*, dan setara dengan analis di *elite hedge fund* internasional.
@@ -674,12 +674,12 @@ Gaya analisis Anda tajam, melihat *blind-spots*, dan setara dengan analis di *el
 KONDISI PDB & PERTUMBUHAN
 =====================
 Fokus Indikator: {selected_view}
-Rata-rata saat ini: {current_avg:.2f}% (Target APBN: {current_target}%)
+Rata-rata Proyeksi DFM saat ini: {current_avg:.2f}% (Target APBN: {current_target}%)
 
 =====================
 DINAMIKA SEKTOR RIIL BULANAN (MtM & YoY)
 =====================
-Berikut adalah rincian kinerja indikator makro bulanan terakhir:
+Berikut rincian kinerja indikator makro bulanan terakhir:
 {monthly_summary_str}
 
 =====================
@@ -696,35 +696,204 @@ VOLATILITAS PASAR HARIAN (DTD & YTD)
 =====================
 TUGAS ANALISIS & SINTESIS
 =====================
-1. ANALISIS PARADOKS & PERSILANGAN: 
-   - Kontraskan data jangka pendek (DTD/MtM) dengan data jangka panjang (YTD/YoY).
-   - Contoh: Jika komoditas turun secara DTD namun masih naik tajam secara YTD, atau jika ekspor naik MtM namun melambat YoY. Temukan "hidden danger" atau "hidden opportunity" dari persilangan data ini.
-2. TRANSMISI KEBIJAKAN: Hubungkan secara logis bagaimana volatilitas pasar harian (IHSG, Nilai Tukar, Komoditas) sedang merembet dan menekan sektor riil bulanan.
+1. ANALISIS PARADOKS & PERSILANGAN: Kontraskan data jangka pendek (DTD/MtM) dengan data jangka panjang (YTD/YoY).
+2. TRANSMISI KEBIJAKAN: Hubungkan secara logis volatilitas pasar harian dengan tekanan/peluang di sektor riil bulanan.
 3. 5 REKOMENDASI KEBIJAKAN INOVATIF:
-   - 2 Kebijakan "Quick Win" (Taktis meredam kepanikan pasar/syok inflasi jangka pendek).
-   - 2 Kebijakan Reformasi Struktural (Fokus ke efisiensi/industrialisasi sektor yang merah YoY-nya).
-   - 1 Kebijakan Unorthodox / Out-of-the-box (Solusi radikal namun rasional yang mendobrak kebiasaan birokrat konvensional).
+   - 2 Kebijakan "Quick Win" (Taktis meredam syok jangka pendek).
+   - 2 Kebijakan Reformasi Struktural (Fokus efisiensi/industrialisasi sektor).
+   - 1 Kebijakan Unorthodox / Out-of-the-box (Solusi radikal pendobrak kebiasaan).
 
 =====================
-FORMAT WAJIB UNTUK SETIAP KEBIJAKAN
+FORMAT WAJIB
 =====================
 - Nama Kebijakan: (Actionable dan Tegas)
-- Rasionalisasi Macro: (Penjelasan mengapa ini menyelesaikan masalah di Sektor Riil maupun Pasar Harian)
+- Rasionalisasi Macro: (Penjelasan penyelesaian masalah Sektor Riil & Pasar)
 - Dasar Akademis: [Nomor]. Dasar Teori - Penulis (Tahun) - Link Scholar: https://scholar.google.com/scholar?q=kata+kunci
 """
-
                         res = model.generate_content(prompt, generation_config=generation_config)
-                        policy_text = res.text
-
-                        # SIMPAN KE CACHE & FILE
-                        st.session_state.policy_cache[signature] = policy_text
-                        with open(CACHE_FILE, "wb") as f:
-                            pickle.dump(st.session_state.policy_cache, f)
-
+                        final_policy_text = res.text
+                        st.session_state.policy_cache[signature] = final_policy_text
+                        with open(CACHE_FILE, "wb") as f: pickle.dump(st.session_state.policy_cache, f)
                         st.success(f"Analisis Selesai (Engine: {model_name})")
-                        st.markdown(policy_text)
-
-                except Exception as e:
+                        st.markdown(final_policy_text)
+                except Exception as e: 
                     st.error(f"Error AI: {e}")
+
+    # =========================================================
+    # FITUR MAGIC: EXPORT KE EXECUTIVE BRIEF (NOTEBOOKLM STYLE)
+    # =========================================================
+    if final_policy_text:
+        st.markdown("<br><hr style='border:1px dashed #ccc;'><br>", unsafe_allow_html=True)
+        st.markdown("#### 📑 Export Executive Brief")
+        st.caption("Download laporan berformat presentasi eksekutif (HTML Interaktif). Bisa di-Save as PDF saat dibuka.")
+        
+        try:
+            import base64
+            import markdown
+            
+            # 1. Capture Grafik Plotly jadi Gambar Resolusi Tinggi
+            img_bytes = fig.to_image(format="png", width=1000, height=450, scale=2)
+            encoded_img = base64.b64encode(img_bytes).decode('utf-8')
+            
+            # 2. Render Teks Markdown AI ke HTML Standard
+            html_policy = markdown.markdown(final_policy_text)
+            
+            # Perbaiki tampilan list/ul dari Markdown agar lebih rapi di HTML
+            html_policy = html_policy.replace("<ul>", "<ul style='padding-left: 20px; color: #374151;'>")
+            html_policy = html_policy.replace("<li>", "<li style='margin-bottom: 10px;'>")
+            html_policy = html_policy.replace("<h3>", "<h3 style='color: #1e3a8a; border-bottom: 1px solid #e5e7eb; padding-bottom:5px; margin-top:25px;'>")
+            
+            # 3. Bikin Template HTML/CSS Premium (Estetik McKinsey/NotebookLM)
+            html_template = f"""
+            <!DOCTYPE html>
+            <html lang="id">
+            <head>
+                <meta charset="UTF-8">
+                <title>Executive Brief: Macroeconomic Update RI</title>
+                <style>
+                    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
+                    body {{
+                        font-family: 'Inter', sans-serif;
+                        background-color: #f3f4f6;
+                        color: #1f2937;
+                        line-height: 1.6;
+                        padding: 40px 20px;
+                        max-width: 900px;
+                        margin: 0 auto;
+                    }}
+                    .header {{
+                        text-align: center;
+                        margin-bottom: 50px;
+                    }}
+                    .header h1 {{
+                        color: #111827;
+                        font-weight: 800;
+                        font-size: 34px;
+                        margin-bottom: 5px;
+                        letter-spacing: -0.5px;
+                    }}
+                    .header p {{
+                        color: #6b7280;
+                        font-size: 14px;
+                        text-transform: uppercase;
+                        letter-spacing: 2px;
+                        font-weight: 600;
+                    }}
+                    .card {{
+                        background: #ffffff;
+                        border-radius: 16px;
+                        padding: 35px;
+                        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+                        margin-bottom: 30px;
+                        border-top: 5px solid #2563eb;
+                    }}
+                    .card-title {{
+                        color: #2563eb;
+                        font-size: 22px;
+                        font-weight: 800;
+                        margin-top: 0;
+                        margin-bottom: 20px;
+                        display: flex;
+                        align-items: center;
+                        gap: 10px;
+                    }}
+                    .chart-container {{
+                        background: #f8fafc;
+                        border-radius: 12px;
+                        padding: 10px;
+                        border: 1px solid #e2e8f0;
+                    }}
+                    .chart-container img {{
+                        width: 100%;
+                        border-radius: 8px;
+                        display: block;
+                    }}
+                    .data-grid {{
+                        display: grid;
+                        grid-template-columns: 1fr 1fr;
+                        gap: 20px;
+                    }}
+                    .data-box {{
+                        background: #f8fafc;
+                        padding: 20px;
+                        border-radius: 12px;
+                        border: 1px solid #e2e8f0;
+                        font-size: 13px;
+                    }}
+                    .data-box h3 {{
+                        margin-top: 0;
+                        color: #475569;
+                        font-size: 14px;
+                        text-transform: uppercase;
+                        letter-spacing: 1px;
+                        border-bottom: 2px solid #cbd5e1;
+                        padding-bottom: 8px;
+                        margin-bottom: 15px;
+                    }}
+                    .ai-content {{
+                        font-size: 15px;
+                        color: #374151;
+                    }}
+                    .footer {{
+                        text-align: center;
+                        margin-top: 50px;
+                        color: #9ca3af;
+                        font-size: 12px;
+                    }}
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h1>🇮🇩 Executive Macroeconomic Brief</h1>
+                    <p>Generated by AI Command Center • Bappenas RI</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">📊 Proyeksi Pertumbuhan Ekonomi (DFM Model)</div>
+                    <div class="chart-container">
+                        <img src="data:image/png;base64,{encoded_img}" alt="Chart DFM">
+                    </div>
+                </div>
+
+                <div class="data-grid">
+                    <div class="card" style="border-top-color: #f59e0b; padding: 25px;">
+                        <div class="data-box" style="border:none; padding:0; background:transparent;">
+                            <h3>📈 Volatilitas Pasar Harian</h3>
+                            <p style="line-height:1.8;">{daily_summary_str.replace(' | ', '<br><br>• ')}</p>
+                        </div>
+                    </div>
+                    <div class="card" style="border-top-color: #10b981; padding: 25px;">
+                        <div class="data-box" style="border:none; padding:0; background:transparent;">
+                            <h3>🗺️ Sentimen Sektor Riil (YoY)</h3>
+                            <p style="line-height:1.8;">{heatmap_summary_str.replace(' | ', '<br><br>• ')}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">🧠 Sintesis & Rekomendasi Kebijakan AI</div>
+                    <div class="ai-content">
+                        {html_policy}
+                    </div>
+                </div>
+                
+                <div class="footer">
+                    <p>Dokumen ini dihasilkan secara otomatis menggunakan model AI Global Macro.</p>
+                    <p>Dicetak pada: {pd.Timestamp.now().strftime('%d %B %Y %H:%M')} WIB</p>
+                </div>
+            </body>
+            </html>
+            """
+            
+            # 4. Tombol Download HTML
+            st.download_button(
+                label="📥 Download Executive Brief (.html)",
+                data=html_template,
+                file_name="Executive_Brief_Bappenas.html",
+                mime="text/html",
+                type="primary" # Tombolnya warna utama biar mencolok
+            )
+        except Exception as e:
+            st.warning(f"Gagal menyiapkan dokumen HTML. Pastikan library 'kaleido' dan 'markdown' sudah terinstall di terminal/environment Anda. Error detail: {e}")
 
     st.markdown('</div>', unsafe_allow_html=True)
