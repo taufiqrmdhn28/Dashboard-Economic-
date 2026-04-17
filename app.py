@@ -728,12 +728,11 @@ FORMAT WAJIB
         st.caption("Download laporan berformat presentasi eksekutif (HTML Interaktif). Bisa di-Save as PDF saat dibuka.")
         
         try:
-            import base64
             import markdown
             
-            # 1. Capture Grafik Plotly jadi Gambar Resolusi Tinggi
-            img_bytes = fig.to_image(format="png", width=1000, height=450, scale=2)
-            encoded_img = base64.b64encode(img_bytes).decode('utf-8')
+            # 1. JALUR NINJA: Ubah grafik langsung jadi elemen HTML Interaktif (Bypass Kaleido)
+            # Ini bikin grafiknya tetep hidup di laporan dan anti-error!
+            chart_html = fig.to_html(full_html=False, include_plotlyjs='cdn', default_height='450px')
             
             # 2. Render Teks Markdown AI ke HTML Standard
             html_policy = markdown.markdown(final_policy_text)
@@ -798,15 +797,11 @@ FORMAT WAJIB
                         gap: 10px;
                     }}
                     .chart-container {{
-                        background: #f8fafc;
+                        background: #ffffff;
                         border-radius: 12px;
-                        padding: 10px;
+                        padding: 0;
                         border: 1px solid #e2e8f0;
-                    }}
-                    .chart-container img {{
-                        width: 100%;
-                        border-radius: 8px;
-                        display: block;
+                        overflow: hidden;
                     }}
                     .data-grid {{
                         display: grid;
@@ -851,7 +846,7 @@ FORMAT WAJIB
                 <div class="card">
                     <div class="card-title">📊 Proyeksi Pertumbuhan Ekonomi (DFM Model)</div>
                     <div class="chart-container">
-                        <img src="data:image/png;base64,{encoded_img}" alt="Chart DFM">
+                        {chart_html}
                     </div>
                 </div>
 
@@ -891,9 +886,9 @@ FORMAT WAJIB
                 data=html_template,
                 file_name="Executive_Brief_Bappenas.html",
                 mime="text/html",
-                type="primary" # Tombolnya warna utama biar mencolok
+                type="primary"
             )
         except Exception as e:
-            st.warning(f"Gagal menyiapkan dokumen HTML. Pastikan library 'kaleido' dan 'markdown' sudah terinstall di terminal/environment Anda. Error detail: {e}")
+            st.warning(f"Gagal menyiapkan dokumen HTML. Error detail: {e}")
 
     st.markdown('</div>', unsafe_allow_html=True)
