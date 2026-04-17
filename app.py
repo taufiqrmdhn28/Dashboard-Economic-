@@ -152,7 +152,7 @@ def calculate_annual_nowcast(pred_means, target_var, cutoff):
     vals = [v for v in vals if pd.notna(v)]
     return np.mean(vals) if len(vals) == 4 else np.nan
 
-@st.cache_data(show_spinner="⚙️ DFM Engine: Menghasilkan Histori Prediksi 2023-2026 & Proyeksi Akhir...")
+@st.cache_data(show_spinner="⚙️ DFM Engine: Menghasilkan Histori Prediksi & Sinkronisasi Data Actual...")
 def run_full_dfm_replication():
     try:
         # 1. Load Data
@@ -179,17 +179,26 @@ def run_full_dfm_replication():
 
         data_full = pd.DataFrame(processed_data).replace([np.inf, -np.inf], np.nan).sort_index()
         data_full.index = pd.to_datetime(data_full.index)
-        data_full = data_full.resample('MS').first() 
+        data_full_resampled = data_full.resample('MS').first() 
         target_var = 'RGDP_growth'
-        
-        # 2. Kumpulkan Jadwal Rilis (DARI 2023 SAMPAI 2026)
+
+        # --- FUNGSI HELPER UNTUK MENGAMBIL NILAI ACTUAL (Excel Only) ---
+        def get_actual_value(ref_period):
+            # Berdasarkan file INO, data kuartalan ada di bln 3, 6, 9, 12 tanggal 1
+            # Contoh: 2023Q1 -> target 2023-03-01
+            target_date = ref_period.to_timestamp(how='end').replace(day=1).normalize()
+            if target_date in data_full.index:
+                val = data_full.loc[target_date, target_var]
+                return val if pd.notna(val) else np.nan
+            return np.nan
+
+        # 2. Kumpulkan Jadwal Rilis (2023 - 2026)
         jobs = []
         seen = set()
         for vc in vintage_cols:
             col_name = vc.strftime('%Y-%m-%d 00:00:00') if vc.strftime('%Y-%m-%d 00:00:00') in df_cal.columns else df_cal.columns[2 + vintage_cols.index(vc)]
             release_dates = pd.to_datetime(df_cal[col_name], errors="coerce").dropna().unique()
             for rd in sorted(release_dates):
-                # -----> UBAH DISINI: HISTORI DARI 2023 <-----
                 if 2023 <= rd.year <= 2026 and (rd, vc) not in seen:
                     seen.add((rd, vc)); jobs.append((rd, vc))
         jobs.sort(key=lambda x: x[0])
@@ -202,14 +211,14 @@ def run_full_dfm_replication():
             obs_cutoff = v_date_base.replace(day=1)
             ref_q = pd.Period(actual_v_date, freq='Q')
             
-            v_data = build_ragged_vintage(data_full, df_cal, indicator_col, vintage_cols, actual_v_date, obs_cutoff).dropna(axis=1, how='all')
+            v_data = build_ragged_vintage(data_full_resampled, df_cal, indicator_col, vintage_cols, actual_v_date, obs_cutoff).dropna(axis=1, how='all')
             end_m = v_data.drop(columns=[target_var], errors='ignore')
             
             q_freq = "QE" if pd.__version__ >= "2.2.0" else "Q"
             if target_var in v_data.columns:
                 end_q = v_data[[target_var]].resample(q_freq).last()
             else:
-                end_q = data_full.loc[data_full.index <= obs_cutoff, [target_var]].resample(q_freq).last()
+                end_q = data_full_resampled.loc[data_full_resampled.index <= obs_cutoff, [target_var]].resample(q_freq).last()
             
             model = DynamicFactorMQ(endog=end_m, endog_quarterly=end_q, k_factors=1, factor_orders=1, idiosyncratic_ar=1, standardize=True)
             res = model.fit(method='em', maxiter=500, tolerance=1e-5, disp=False)
@@ -218,6 +227,7 @@ def run_full_dfm_replication():
             results_table.append({
                 'Day Prediction': actual_v_date,
                 'Reference Quarter': ref_q.strftime('%YQ%q'),
+                'Actual': get_actual_value(ref_q), # <--- KOLOM ACTUAL MASUK DISINI
                 'Backcast': get_prediction_value(means, target_var, ref_q - 1),
                 'Nowcast': get_prediction_value(means, target_var, ref_q),
                 'Forecast': get_prediction_value(means, target_var, ref_q + 1),
