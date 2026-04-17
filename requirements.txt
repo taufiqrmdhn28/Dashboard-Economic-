@@ -6,3 +6,5 @@ google-generativeai
 scikit-learn
 statsmodels
 openpyxl
+markdown
+kaleido
