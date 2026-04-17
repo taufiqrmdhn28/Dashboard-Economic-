@@ -750,145 +750,182 @@ FORMAT WAJIB
                 <meta charset="UTF-8">
                 <title>Executive Brief: Macroeconomic Update RI</title>
                 <style>
-                    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
+                    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&family=Merriweather:ital,wght@0,300;1,300&display=swap');
+                    
                     body {{
-                        font-family: 'Inter', sans-serif;
-                        background-color: #f3f4f6;
-                        color: #1f2937;
-                        line-height: 1.6;
-                        padding: 40px 20px;
-                        max-width: 900px;
+                        font-family: 'Plus Jakarta Sans', sans-serif;
+                        background-color: #cbd5e1; /* Warna meja abu-abu */
+                        color: #1e293b;
+                        line-height: 1.7;
+                        padding: 50px 20px;
+                        margin: 0;
+                    }}
+                    .report-container {{
+                        max-width: 950px;
                         margin: 0 auto;
-                    }}
-                    .header {{
-                        text-align: center;
-                        margin-bottom: 50px;
-                    }}
-                    .header h1 {{
-                        color: #111827;
-                        font-weight: 800;
-                        font-size: 34px;
-                        margin-bottom: 5px;
-                        letter-spacing: -0.5px;
-                    }}
-                    .header p {{
-                        color: #6b7280;
-                        font-size: 14px;
-                        text-transform: uppercase;
-                        letter-spacing: 2px;
-                        font-weight: 600;
-                    }}
-                    .card {{
                         background: #ffffff;
-                        border-radius: 16px;
-                        padding: 35px;
-                        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-                        margin-bottom: 30px;
-                        border-top: 5px solid #2563eb;
-                    }}
-                    .card-title {{
-                        color: #2563eb;
-                        font-size: 22px;
-                        font-weight: 800;
-                        margin-top: 0;
-                        margin-bottom: 20px;
-                        display: flex;
-                        align-items: center;
-                        gap: 10px;
-                    }}
-                    .chart-container {{
-                        background: #ffffff;
-                        border-radius: 12px;
-                        padding: 0;
-                        border: 1px solid #e2e8f0;
+                        border-radius: 24px;
+                        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35); /* Efek kertas melayang */
                         overflow: hidden;
                     }}
-                    .data-grid {{
+                    .header {{
+                        background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%); /* Bappenas Blue */
+                        color: white;
+                        padding: 60px 50px;
+                        position: relative;
+                    }}
+                    .badge-top {{
+                        background: rgba(255,255,255,0.15);
+                        padding: 6px 16px;
+                        border-radius: 20px;
+                        font-size: 12px;
+                        font-weight: 800;
+                        letter-spacing: 1.5px;
+                        text-transform: uppercase;
+                        color: #e2e8f0;
+                        border: 1px solid rgba(255,255,255,0.2);
+                        display: inline-block;
+                        margin-bottom: 20px;
+                        backdrop-filter: blur(4px);
+                    }}
+                    .header h1 {{
+                        font-weight: 800;
+                        font-size: 38px;
+                        margin: 0 0 10px 0;
+                        line-height: 1.2;
+                        color: #f8fafc;
+                        letter-spacing: -0.5px;
+                    }}
+                    .header p.subtitle {{
+                        font-family: 'Merriweather', serif;
+                        font-style: italic;
+                        color: #94a3b8;
+                        font-size: 16px;
+                        margin: 0;
+                    }}
+                    .content {{
+                        padding: 50px;
+                    }}
+                    .section-title {{
+                        font-size: 22px;
+                        font-weight: 800;
+                        color: #0f172a;
+                        display: flex;
+                        align-items: center;
+                        gap: 12px;
+                        margin-top: 0;
+                        margin-bottom: 25px;
+                        border-bottom: 2px solid #f1f5f9;
+                        padding-bottom: 15px;
+                    }}
+                    .section-title span {{
+                        background: #eff6ff;
+                        color: #2563eb;
+                        padding: 8px;
+                        border-radius: 10px;
+                        font-size: 18px;
+                    }}
+                    .chart-box {{
+                        background: #ffffff;
+                        border: 1px solid #e2e8f0;
+                        border-radius: 16px;
+                        padding: 5px;
+                        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+                        margin-bottom: 40px;
+                    }}
+                    .grid-2 {{
                         display: grid;
                         grid-template-columns: 1fr 1fr;
-                        gap: 20px;
+                        gap: 30px;
+                        margin-bottom: 40px;
                     }}
-                    .data-box {{
+                    .info-card {{
                         background: #f8fafc;
-                        padding: 20px;
-                        border-radius: 12px;
-                        border: 1px solid #e2e8f0;
-                        font-size: 13px;
+                        border-radius: 16px;
+                        padding: 30px;
+                        border: 1px solid #f1f5f9;
+                        position: relative;
+                        overflow: hidden;
                     }}
-                    .data-box h3 {{
-                        margin-top: 0;
+                    .info-card::before {{
+                        content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 5px;
+                    }}
+                    .info-card.volatility::before {{ background: #f59e0b; }} /* Aksen Emas */
+                    .info-card.heatmap::before {{ background: #10b981; }} /* Aksen Hijau */
+                    
+                    .info-card h3 {{
+                        margin: 0 0 15px 0;
+                        font-size: 15px;
                         color: #475569;
-                        font-size: 14px;
                         text-transform: uppercase;
                         letter-spacing: 1px;
-                        border-bottom: 2px solid #cbd5e1;
-                        padding-bottom: 8px;
-                        margin-bottom: 15px;
+                        font-weight: 800;
                     }}
-                    .ai-content {{
-                        font-size: 15px;
-                        color: #374151;
+                    .info-card p {{
+                        margin: 0;
+                        font-size: 14px;
+                        line-height: 1.8;
+                        color: #334155;
                     }}
+                    .ai-box {{
+                        background: linear-gradient(to bottom right, #ffffff, #f0f9ff);
+                        border-radius: 20px;
+                        padding: 40px;
+                        border: 1px solid #bae6fd;
+                        box-shadow: inset 0 2px 4px 0 rgba(255, 255, 255, 0.5);
+                    }}
+                    .ai-box h3 {{ color: #1e40af; border-bottom: 1px solid #bfdbfe; padding-bottom: 10px; margin-top: 25px; }}
+                    .ai-box ul {{ padding-left: 20px; color: #334155; }}
+                    .ai-box li {{ margin-bottom: 12px; }}
+                    
                     .footer {{
                         text-align: center;
-                        margin-top: 50px;
-                        color: #9ca3af;
-                        font-size: 12px;
+                        padding: 30px;
+                        background: #f8fafc;
+                        color: #64748b;
+                        font-size: 13px;
+                        border-top: 1px solid #e2e8f0;
+                        font-family: 'Merriweather', serif;
+                        font-style: italic;
                     }}
                 </style>
             </head>
             <body>
-                <div class="header">
-                    <h1>🇮🇩 Executive Macroeconomic Brief</h1>
-                    <p>Generated by AI Command Center • Bappenas RI</p>
-                </div>
-
-                <div class="card">
-                    <div class="card-title">📊 Proyeksi Pertumbuhan Ekonomi (DFM Model)</div>
-                    <div class="chart-container">
-                        {chart_html}
+                <div class="report-container">
+                    <div class="header">
+                        <div class="badge-top">Sangat Rahasia / Strictly Confidential</div>
+                        <h1>Executive Macroeconomic Brief</h1>
+                        <p class="subtitle">Analisis Global Macro & Sintesis Kebijakan AI Command Center</p>
                     </div>
-                </div>
 
-                <div class="data-grid">
-                    <div class="card" style="border-top-color: #f59e0b; padding: 25px;">
-                        <div class="data-box" style="border:none; padding:0; background:transparent;">
-                            <h3>📈 Volatilitas Pasar Harian</h3>
-                            <p style="line-height:1.8;">{daily_summary_str.replace(' | ', '<br><br>• ')}</p>
+                    <div class="content">
+                        <h2 class="section-title"><span>📊</span> Proyeksi Pertumbuhan Ekonomi (DFM)</h2>
+                        <div class="chart-box">
+                            {chart_html}
+                        </div>
+
+                        <div class="grid-2">
+                            <div class="info-card volatility">
+                                <h3>📈 Volatilitas Pasar Harian</h3>
+                                <p>{daily_summary_str.replace(' | ', '<br><br>• ')}</p>
+                            </div>
+                            <div class="info-card heatmap">
+                                <h3>🗺️ Sentimen Sektor Riil (YoY)</h3>
+                                <p>{heatmap_summary_str.replace(' | ', '<br><br>• ')}</p>
+                            </div>
+                        </div>
+
+                        <div class="ai-box">
+                            <h2 class="section-title" style="border:none; padding:0; margin-bottom: 20px;"><span>🧠</span> Sintesis & Rekomendasi AI</h2>
+                            {html_policy}
                         </div>
                     </div>
-                    <div class="card" style="border-top-color: #10b981; padding: 25px;">
-                        <div class="data-box" style="border:none; padding:0; background:transparent;">
-                            <h3>🗺️ Sentimen Sektor Riil (YoY)</h3>
-                            <p style="line-height:1.8;">{heatmap_summary_str.replace(' | ', '<br><br>• ')}</p>
-                        </div>
+                    
+                    <div class="footer">
+                        Dokumen ini dihasilkan secara otomatis menggunakan model AI Global Macro Bappenas.<br>
+                        Dicetak pada: <strong>{pd.Timestamp.now().strftime('%d %B %Y %H:%M')} WIB</strong>
                     </div>
-                </div>
-
-                <div class="card">
-                    <div class="card-title">🧠 Sintesis & Rekomendasi Kebijakan AI</div>
-                    <div class="ai-content">
-                        {html_policy}
-                    </div>
-                </div>
-                
-                <div class="footer">
-                    <p>Dokumen ini dihasilkan secara otomatis menggunakan model AI Global Macro.</p>
-                    <p>Dicetak pada: {pd.Timestamp.now().strftime('%d %B %Y %H:%M')} WIB</p>
                 </div>
             </body>
             </html>
             """
-            
-            # 4. Tombol Download HTML
-            st.download_button(
-                label="📥 Download Executive Brief (.html)",
-                data=html_template,
-                file_name="Executive_Brief_Bappenas.html",
-                mime="text/html",
-                type="primary"
-            )
-        except Exception as e:
-            st.warning(f"Gagal menyiapkan dokumen HTML. Error detail: {e}")
-
-    st.markdown('</div>', unsafe_allow_html=True)
