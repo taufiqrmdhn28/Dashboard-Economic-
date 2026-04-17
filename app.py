@@ -250,23 +250,30 @@ if df_target is not None:
 
     t_2026 = df_target[df_target['Tahun'] == 2026]['Target'].values[0] if 2026 in df_target['Tahun'].values else 5.4
     
-    # EKSEKUSI REPLIKASI FULL DFM (Hasilnya Tepat 4 Baris: Q1-Q4 2026)
+    # EKSEKUSI DFM
     df_full_results = run_full_dfm_replication()
     
     if not df_full_results.empty:
         preds_2026 = []
-        # Memaksa AI hanya mengambil HANYA nilai NOWCAST secara berurutan (Q1, Q2, Q3, Q4)
-        for q_str in ['2026Q1', '2026Q2', '2026Q3', '2026Q4']:
-            row = df_full_results[df_full_results['Reference Quarter'] == q_str]
-            if not row.empty:
-                preds_2026.append(row.iloc[0]['Nowcast'])
+        
+        # LOGIKA SELEKSI: Ambil prediksi NOWCAST terakhir untuk tiap kuartal di 2026
+        for q in [1, 2, 3, 4]:
+            q_label = f"2026Q{q}"
+            
+            # Filter baris yang membicarakan kuartal target (Reference Quarter)
+            df_q_target = df_full_results[df_full_results['Reference Quarter'] == q_label]
+            
+            if not df_q_target.empty:
+                # Ambil tanggal prediksi (Day Prediction) yang paling terakhir di kuartal tersebut
+                # Misal: Untuk Q1, ini akan mengambil Nowcast yang diprediksi di akhir Maret
+                latest_prediction = df_q_target.sort_values('Day Prediction').iloc[-1]['Nowcast']
+                preds_2026.append(latest_prediction)
             else:
                 preds_2026.append(np.nan)
         
-        # Jaga-jaga jika ada kuartal yang kosong di kalender
-        s = pd.Series(preds_2026)
-        s = s.ffill().bfill().fillna(5.2)
-        preds_2026 = s.tolist()
+        # Bersihkan data (ffill/bfill) jika ada kuartal yang belum memiliki jadwal rilis sama sekali
+        s_preds = pd.Series(preds_2026)
+        preds_2026 = s_preds.ffill().bfill().fillna(5.2).tolist()
     else:
         preds_2026 = [5.1, 5.2, 5.3, 5.4]
 
