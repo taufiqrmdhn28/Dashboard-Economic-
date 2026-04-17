@@ -123,101 +123,78 @@ def apply_matlab_transformation(series, j1, j2, j3, freq='M'):
         out = out.diff(lags)
     return out
 
-def build_ragged_vintage(data_full, df_cal, indicator_col, vintage_cols, v_date, obs_cutoff):
-    vintage = data_full[data_full.index <= obs_cutoff].copy()
-    vcols_sorted = sorted([c for c in vintage_cols if c <= obs_cutoff])
-    v_col_key = vcols_sorted[-1] if vcols_sorted else None
-    if v_col_key is None: return vintage
-    for _, row in df_cal.iterrows():
-        ind = row[indicator_col]
-        if ind not in vintage.columns: continue
-        rd = pd.to_datetime(row[v_col_key], errors="coerce")
-        if pd.notna(rd) and rd > v_date:
-            mask_from = rd.replace(day=1) - pd.DateOffset(months=1)
-            vintage.loc[vintage.index >= mask_from, ind] = np.nan
-    return vintage
-
-def get_prediction_value(pred_means, target, quarter):
+def get_prediction_value(pred_means, target, year, quarter):
     if target not in pred_means.columns: return np.nan
-    q_end = quarter.to_timestamp(how="end").normalize()
-    q_start = quarter.to_timestamp(how="start")
-    for candidate in [q_start, q_end, q_start.replace(day=1), q_end.replace(day=1)]:
-        if candidate in pred_means.index:
-            return float(pred_means.loc[candidate, target])
+    # Cari nilai tepat di bulan akhir kuartal (Bulan 3, 6, 9, 12)
+    target_month = quarter * 3 
+    try:
+        mask = (pred_means.index.year == year) & (pred_means.index.month == target_month)
+        res = pred_means[mask]
+        if not res.empty:
+            return float(res[target].iloc[0])
+    except: pass
     return np.nan
 
-@st.cache_data(show_spinner="⚙️ Engine DFM sedang menghitung Nowcasting (Menggunakan Algoritma EM)...")
+@st.cache_data(show_spinner="⚙️ Engine DFM sedang mensimulasikan Nowcasting (Algoritma EM)...")
 def run_dfm_engine_for_dashboard():
     try:
-        # Load sheets DFM dari file INO_02022026.xlsx (file_adb)
+        # 1. Load Data Mentah
         df_m_raw = pd.read_excel(file_adb, sheet_name='MonthlyData', index_col=0, parse_dates=True)
         df_q_raw = pd.read_excel(file_adb, sheet_name='QuarterlyData', index_col=0, parse_dates=True)
-        df_cal = pd.read_excel(file_adb, sheet_name='Calendar')
         info_m = pd.read_excel(file_adb, sheet_name='InfoM')
         info_q = pd.read_excel(file_adb, sheet_name='InfoQ')
-    except Exception as e:
-        st.error(f"Gagal memuat sheet DFM: {e}")
-        return [5.1, 5.2, 5.3, 5.4] # Fallback default jika error
-
-    if "INCLUDE" in df_cal.columns: df_cal = df_cal[df_cal["INCLUDE"] == 1].reset_index(drop=True)
-    indicator_col = df_cal.columns[0]
-    vintage_cols = [pd.to_datetime(c) for c in df_cal.columns[2:]]
-
-    processed_data = {}
-    for _, row in info_m[info_m['INCLUDED'] == 1].iterrows():
-        name = row['Indicator Code']
-        if name in df_m_raw.columns:
-            processed_data[name] = apply_matlab_transformation(df_m_raw[name], row['log'], row['MoM'], row['YoY'], 'M')
-            
-    for _, row in info_q[info_q['INCLUDED'] == 1].iterrows():
-        name = row['Indicator Code']
-        if name in df_q_raw.columns:
-            s = apply_matlab_transformation(df_q_raw[name], row['log'], row['QoQ'], row['YoY'], 'Q')
-            monthly_idx = pd.date_range(start=s.index.min(), end=s.index.max() + pd.offsets.MonthEnd(3), freq="MS")
-            processed_data[name] = s.reindex(monthly_idx)
-
-    data_full = pd.DataFrame(processed_data).replace([np.inf, -np.inf], np.nan).sort_index()
-
-    # AMBIL VINTAGE TERAKHIR SAJA UNTUK EFISIENSI DASHBOARD
-    jobs = []
-    seen = set()
-    for vc in vintage_cols:
-        col_name = vc.strftime('%Y-%m-%d 00:00:00') if vc.strftime('%Y-%m-%d 00:00:00') in df_cal.columns else df_cal.columns[2 + vintage_cols.index(vc)]
-        release_dates = pd.to_datetime(df_cal[col_name], errors="coerce").dropna().unique()
-        for rd in sorted(release_dates):
-            if (rd, vc) not in seen:
-                seen.add((rd, vc))
-                jobs.append((rd, vc))
-    
-    if not jobs: return [5.1, 5.2, 5.3, 5.4]
-    
-    jobs.sort(key=lambda x: x[0])
-    actual_v_date, v_date_base = jobs[-1] # EKSEKUSI HANYA DATA TERBARU
-    
-    obs_cutoff = v_date_base.replace(day=1)
-    current_data = build_ragged_vintage(data_full, df_cal, indicator_col, vintage_cols, actual_v_date, obs_cutoff)
-    v_data = current_data.dropna(axis=1, how='all')
-    
-    endog_monthly = v_data.drop(columns=['RGDP_growth'])
-    q_freq = "QE" if pd.__version__ >= "2.2.0" else "Q"
-    endog_q_raw = data_full.loc[data_full.index <= obs_cutoff, 'RGDP_growth'].resample(q_freq).last().dropna()
-
-    model = DynamicFactorMQ(
-        endog=endog_monthly,
-        endog_quarterly=endog_q_raw,
-        k_factors=1, factor_orders=1, idiosyncratic_ar=1, standardize=True
-    )
-    res = model.fit(method='em', maxiter=1000, tolerance=1e-6, disp=False)
-    predict = res.get_prediction(end=res.model.nobs + 12)
-    means = predict.predicted_mean
-
-    # EKSTRAK PREDIKSI Q1 - Q4 TAHUN 2026
-    preds = []
-    for q in range(1, 5):
-        val = get_prediction_value(means, 'RGDP_growth', pd.Period(year=2026, quarter=q, freq='Q'))
-        preds.append(val if pd.notna(val) else 5.0) # Fallback jika NaN
         
-    return preds
+        # 2. Transformasi Sesuai Aturan INO
+        processed_data = {}
+        for _, row in info_m[info_m['INCLUDED'] == 1].iterrows():
+            name = row['Indicator Code']
+            if name in df_m_raw.columns:
+                processed_data[name] = apply_matlab_transformation(df_m_raw[name], row['log'], row['MoM'], row['YoY'], 'M')
+                
+        for _, row in info_q[info_q['INCLUDED'] == 1].iterrows():
+            name = row['Indicator Code']
+            if name in df_q_raw.columns:
+                # Biarkan kuartalan natural sesuai format Awal Bulan (MS)
+                processed_data[name] = apply_matlab_transformation(df_q_raw[name], row['log'], row['QoQ'], row['YoY'], 'Q')
+
+        # 3. Gabungkan Data & RATA-KAN FREKUENSI KE 'MS' (MONTH-START)
+        data_full = pd.DataFrame(processed_data).replace([np.inf, -np.inf], np.nan)
+        data_full.index = pd.to_datetime(data_full.index)
+        data_full = data_full.resample('MS').first() # INI KUNCI AGAR STATSMODELS TIDAK CRASH!
+        
+        target_var = 'RGDP_growth'
+        if target_var not in data_full.columns:
+            return [5.1, 5.2, 5.3, 5.4]
+            
+        # 4. Pisahkan Endog Bulanan & Kuartalan
+        # DFM menerima endog_quarterly di frekuensi bulanan asalkan ada di bln 3,6,9,12
+        endog_monthly = data_full.drop(columns=[target_var])
+        endog_quarterly = data_full[[target_var]] 
+
+        # 5. Eksekusi Model DFM
+        model = DynamicFactorMQ(
+            endog=endog_monthly,
+            endog_quarterly=endog_quarterly,
+            k_factors=1, factor_orders=1, idiosyncratic_ar=1, standardize=True
+        )
+        res = model.fit(method='em', maxiter=1000, tolerance=1e-6, disp=False)
+        
+        # 6. Proyeksi Jauh ke Depan (36 bulan untuk menembus Q4 2026)
+        predict = res.get_prediction(end=res.model.nobs + 36)
+        means = predict.predicted_mean
+
+        # 7. Ambil Hasil untuk 2026
+        preds = []
+        for q in range(1, 5):
+            val = get_prediction_value(means, target_var, 2026, q)
+            preds.append(val if pd.notna(val) else 5.0) 
+            
+        return preds
+        
+    except Exception as e:
+        # Menampilkan pop-up error jika sewaktu-waktu format data berubah lagi
+        st.error(f"Error Engine DFM: {e}")
+        return [5.1, 5.2, 5.3, 5.4]
 
 # ==========================================
 # 4. EXECUTION DASHBOARD PDB
