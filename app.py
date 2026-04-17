@@ -109,7 +109,7 @@ def load_daily_data():
 df_daily, date_col_daily = load_daily_data()
 
 # ==========================================
-# 3. ENGINE DFM NOWCASTING (FULL REPLICATION MODE)
+# 3. ENGINE DFM NOWCASTING (TARGET 4 KUARTAL 2026)
 # ==========================================
 def apply_matlab_transformation(series, j1, j2, j3, freq='M'):
     out = series.copy().astype(float)
@@ -152,7 +152,7 @@ def calculate_annual_nowcast(pred_means, target_var, cutoff):
     vals = [v for v in vals if pd.notna(v)]
     return np.mean(vals) if len(vals) == 4 else np.nan
 
-@st.cache_data(show_spinner="⚙️ Menjalankan Replikasi DFM Full (Mungkin butuh beberapa menit)...")
+@st.cache_data(show_spinner="⚙️ DFM Nowcasting: Memproses 4 Titik Kalender Terakhir di Tiap Kuartal 2026...")
 def run_full_dfm_replication():
     try:
         # 1. Load Data
@@ -175,39 +175,47 @@ def run_full_dfm_replication():
             name = row['Indicator Code']
             if name in df_q_raw.columns:
                 s = apply_matlab_transformation(df_q_raw[name], row['log'], row['QoQ'], row['YoY'], 'Q')
-                processed_data[name] = s.reindex(pd.date_range(start=s.index.min(), end=s.index.max()+pd.offsets.MonthEnd(3), freq="MS"))
+                processed_data[name] = s
 
-        data_full = pd.DataFrame(processed_data).replace([np.inf, -np.inf], np.nan).sort_index()
+        # 2. RATA-KAN FREKUENSI KE 'MS'
+        data_full = pd.DataFrame(processed_data).replace([np.inf, -np.inf], np.nan)
+        data_full.index = pd.to_datetime(data_full.index)
+        data_full = data_full.resample('MS').first() 
         target_var = 'RGDP_growth'
+        if target_var not in data_full.columns: return pd.DataFrame()
         
-        # 2. Persiapan Iterasi (Seperti di Colab)
-        start_eval_dt = pd.to_datetime('2023-01-01') # Mulai histori rilis dari 2023
+        # 3. Kumpulkan Jadwal Rilis KHUSUS TAHUN 2026
         jobs = []
         seen = set()
         for vc in vintage_cols:
             col_name = vc.strftime('%Y-%m-%d 00:00:00') if vc.strftime('%Y-%m-%d 00:00:00') in df_cal.columns else df_cal.columns[2 + vintage_cols.index(vc)]
             release_dates = pd.to_datetime(df_cal[col_name], errors="coerce").dropna().unique()
             for rd in sorted(release_dates):
-                if rd >= start_eval_dt and (rd, vc) not in seen:
+                if rd.year == 2026 and (rd, vc) not in seen:
                     seen.add((rd, vc)); jobs.append((rd, vc))
-        
         jobs.sort(key=lambda x: x[0])
-        results_table = []
+        
+        # 4. Filter: Ambil Tanggal Paling Terakhir di Tiap Kuartal (Q1, Q2, Q3, Q4)
+        target_jobs = []
+        for q in [1, 2, 3, 4]:
+            q_jobs = [j for j in jobs if j[0].quarter == q]
+            if q_jobs: target_jobs.append(q_jobs[-1]) 
+                
+        if not target_jobs: return pd.DataFrame()
 
-        # Loop Vintage (Hanya ambil 10-15 terakhir agar dashboard tidak timeout, atau semua jika ingin full)
-        # Untuk performa dashboard, kita ambil vintage terbaru saja untuk loop cepat
-        for actual_v_date, v_date_base in jobs[-20:]: # Ambil 20 rilis terakhir agar histori rilis terlihat
+        # 5. Eksekusi Iterasi
+        results_table = []
+        for actual_v_date, v_date_base in target_jobs:
             obs_cutoff = v_date_base.replace(day=1)
             ref_q = pd.Period(actual_v_date, freq='Q')
-            v_data = build_ragged_vintage(data_full, df_cal, indicator_col, vintage_cols, actual_v_date, obs_cutoff).dropna(axis=1, how='all')
             
+            v_data = build_ragged_vintage(data_full, df_cal, indicator_col, vintage_cols, actual_v_date, obs_cutoff).dropna(axis=1, how='all')
             end_m = v_data.drop(columns=[target_var])
-            q_freq = "QE" if pd.__version__ >= "2.2.0" else "Q"
-            end_q = data_full.loc[data_full.index <= obs_cutoff, target_var].resample(q_freq).last().dropna()
+            end_q = data_full[[target_var]]
             
             model = DynamicFactorMQ(endog=end_m, endog_quarterly=end_q, k_factors=1, factor_orders=1, idiosyncratic_ar=1, standardize=True)
-            res = model.fit(method='em', maxiter=500, tolerance=1e-5, disp=False) # maxiter dikurangi sedikit biar lebih cepat
-            means = res.get_prediction(end=res.model.nobs + 12).predicted_mean
+            res = model.fit(method='em', maxiter=1000, tolerance=1e-5, disp=False)
+            means = res.get_prediction(end=res.model.nobs + 24).predicted_mean
             
             results_table.append({
                 'Day Prediction': actual_v_date,
@@ -242,19 +250,24 @@ if df_target is not None:
         combined_2025.append(val)
 
     t_2026 = df_target[df_target['Tahun'] == 2026]['Target'].values[0] if 2026 in df_target['Tahun'].values else 5.4
+    
+    # EKSEKUSI REPLIKASI FULL DFM (Hasilnya Tepat 4 Baris: Q1-Q4 2026)
     df_full_results = run_full_dfm_replication()
     
     if not df_full_results.empty:
-        # Ambil baris terakhir (vintage paling baru) untuk ditampilkan di grafik
-        latest_row = df_full_results.iloc[-1]
+        preds_2026 = []
+        # Memaksa AI hanya mengambil HANYA nilai NOWCAST secara berurutan (Q1, Q2, Q3, Q4)
+        for q_str in ['2026Q1', '2026Q2', '2026Q3', '2026Q4']:
+            row = df_full_results[df_full_results['Reference Quarter'] == q_str]
+            if not row.empty:
+                preds_2026.append(row.iloc[0]['Nowcast'])
+            else:
+                preds_2026.append(np.nan)
         
-        # Susun prediksi untuk chart
-        preds_2026 = [
-            latest_row['Nowcast'], 
-            latest_row['Forecast'], 
-            latest_row['2-step'], 
-            latest_row['3-step']
-        ]
+        # Jaga-jaga jika ada kuartal yang kosong di kalender
+        s = pd.Series(preds_2026)
+        s = s.ffill().bfill().fillna(5.2)
+        preds_2026 = s.tolist()
     else:
         preds_2026 = [5.1, 5.2, 5.3, 5.4]
 
