@@ -3,9 +3,14 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 import google.generativeai as genai
-from statsmodels.tsa.holtwinters import ExponentialSmoothing
+from statsmodels.tsa.statespace.dynamic_factor_mq import DynamicFactorMQ
 import os
 import pickle
+import warnings
+import hashlib
+
+# Abaikan warning agar terminal bersih
+warnings.filterwarnings('ignore')
 
 file_makro = "Makro Indikator AI.xlsx"
 file_adb = "INO_02022026.xlsx"
@@ -104,41 +109,115 @@ def load_daily_data():
 df_daily, date_col_daily = load_daily_data()
 
 # ==========================================
-# 3. ROBUST ECONOMETRIC ENGINE (HOLT-WINTERS)
+# 3. ENGINE DFM NOWCASTING (MENGGANTIKAN HOLT-WINTERS)
 # ==========================================
-def calculate_econometric_projection(df_historical, data_2025_list, target_2026):
-    df_h = df_historical.copy()
+def apply_matlab_transformation(series, j1, j2, j3, freq='M'):
+    out = series.copy().astype(float)
+    if j1 == 1:
+        out = out.mask(out <= 0, np.nan)
+        out = 100 * np.log(out)
+    if j2 == 1:
+        out = out.diff(1)
+    elif j3 == 1:
+        lags = 12 if freq == 'M' else 4
+        out = out.diff(lags)
+    return out
+
+def build_ragged_vintage(data_full, df_cal, indicator_col, vintage_cols, v_date, obs_cutoff):
+    vintage = data_full[data_full.index <= obs_cutoff].copy()
+    vcols_sorted = sorted([c for c in vintage_cols if c <= obs_cutoff])
+    v_col_key = vcols_sorted[-1] if vcols_sorted else None
+    if v_col_key is None: return vintage
+    for _, row in df_cal.iterrows():
+        ind = row[indicator_col]
+        if ind not in vintage.columns: continue
+        rd = pd.to_datetime(row[v_col_key], errors="coerce")
+        if pd.notna(rd) and rd > v_date:
+            mask_from = rd.replace(day=1) - pd.DateOffset(months=1)
+            vintage.loc[vintage.index >= mask_from, ind] = np.nan
+    return vintage
+
+def get_prediction_value(pred_means, target, quarter):
+    if target not in pred_means.columns: return np.nan
+    q_end = quarter.to_timestamp(how="end").normalize()
+    q_start = quarter.to_timestamp(how="start")
+    for candidate in [q_start, q_end, q_start.replace(day=1), q_end.replace(day=1)]:
+        if candidate in pred_means.index:
+            return float(pred_means.loc[candidate, target])
+    return np.nan
+
+@st.cache_data(show_spinner="⚙️ Engine DFM sedang menghitung Nowcasting (Menggunakan Algoritma EM)...")
+def run_dfm_engine_for_dashboard():
     try:
-        if pd.api.types.is_numeric_dtype(df_h.iloc[:, 0]):
-             df_h.iloc[:, 0] = pd.to_datetime(df_h.iloc[:, 0], unit='D', origin='1899-12-30')
-        else:
-             df_h.iloc[:, 0] = pd.to_datetime(df_h.iloc[:, 0])
-    except: pass
-
-    df_h.set_index(df_h.columns[0], inplace=True)
-    col_target = 'RGDP_growth' if 'RGDP_growth' in df_h.columns else df_h.columns[1]
-    series_hist = df_h[col_target].dropna()
-
-    idx_2025 = pd.date_range(start='2025-03-31', periods=4, freq='QE')
-    series_2025 = pd.Series(data_2025_list, index=idx_2025)
-
-    full_series = pd.concat([series_hist, series_2025])
-    full_series = full_series.sort_index()
-    full_series.index = pd.DatetimeIndex(full_series.index).to_period('Q-DEC')
-
-    try:
-        model = ExponentialSmoothing(
-            full_series, trend='add', seasonal='add', seasonal_periods=4, damped_trend=True
-        ).fit()
-
-        forecast_2026 = model.forecast(4)
-        final_preds = []
-        for val in forecast_2026:
-            clipped_val = np.clip(val, 4.5, 5.8)
-            final_preds.append(clipped_val)
-        return list(final_preds)
+        # Load sheets DFM dari file INO_02022026.xlsx (file_adb)
+        df_m_raw = pd.read_excel(file_adb, sheet_name='MonthlyData', index_col=0, parse_dates=True)
+        df_q_raw = pd.read_excel(file_adb, sheet_name='QuarterlyData', index_col=0, parse_dates=True)
+        df_cal = pd.read_excel(file_adb, sheet_name='Calendar')
+        info_m = pd.read_excel(file_adb, sheet_name='InfoM')
+        info_q = pd.read_excel(file_adb, sheet_name='InfoQ')
     except Exception as e:
-        return [5.1, 5.3, 5.2, 5.4]
+        st.error(f"Gagal memuat sheet DFM: {e}")
+        return [5.1, 5.2, 5.3, 5.4] # Fallback default jika error
+
+    if "INCLUDE" in df_cal.columns: df_cal = df_cal[df_cal["INCLUDE"] == 1].reset_index(drop=True)
+    indicator_col = df_cal.columns[0]
+    vintage_cols = [pd.to_datetime(c) for c in df_cal.columns[2:]]
+
+    processed_data = {}
+    for _, row in info_m[info_m['INCLUDED'] == 1].iterrows():
+        name = row['Indicator Code']
+        if name in df_m_raw.columns:
+            processed_data[name] = apply_matlab_transformation(df_m_raw[name], row['log'], row['MoM'], row['YoY'], 'M')
+            
+    for _, row in info_q[info_q['INCLUDED'] == 1].iterrows():
+        name = row['Indicator Code']
+        if name in df_q_raw.columns:
+            s = apply_matlab_transformation(df_q_raw[name], row['log'], row['QoQ'], row['YoY'], 'Q')
+            monthly_idx = pd.date_range(start=s.index.min(), end=s.index.max() + pd.offsets.MonthEnd(3), freq="MS")
+            processed_data[name] = s.reindex(monthly_idx)
+
+    data_full = pd.DataFrame(processed_data).replace([np.inf, -np.inf], np.nan).sort_index()
+
+    # AMBIL VINTAGE TERAKHIR SAJA UNTUK EFISIENSI DASHBOARD
+    jobs = []
+    seen = set()
+    for vc in vintage_cols:
+        col_name = vc.strftime('%Y-%m-%d 00:00:00') if vc.strftime('%Y-%m-%d 00:00:00') in df_cal.columns else df_cal.columns[2 + vintage_cols.index(vc)]
+        release_dates = pd.to_datetime(df_cal[col_name], errors="coerce").dropna().unique()
+        for rd in sorted(release_dates):
+            if (rd, vc) not in seen:
+                seen.add((rd, vc))
+                jobs.append((rd, vc))
+    
+    if not jobs: return [5.1, 5.2, 5.3, 5.4]
+    
+    jobs.sort(key=lambda x: x[0])
+    actual_v_date, v_date_base = jobs[-1] # EKSEKUSI HANYA DATA TERBARU
+    
+    obs_cutoff = v_date_base.replace(day=1)
+    current_data = build_ragged_vintage(data_full, df_cal, indicator_col, vintage_cols, actual_v_date, obs_cutoff)
+    v_data = current_data.dropna(axis=1, how='all')
+    
+    endog_monthly = v_data.drop(columns=['RGDP_growth'])
+    q_freq = "QE" if pd.__version__ >= "2.2.0" else "Q"
+    endog_q_raw = data_full.loc[data_full.index <= obs_cutoff, 'RGDP_growth'].resample(q_freq).last().dropna()
+
+    model = DynamicFactorMQ(
+        endog=endog_monthly,
+        endog_quarterly=endog_q_raw,
+        k_factors=1, factor_orders=1, idiosyncratic_ar=1, standardize=True
+    )
+    res = model.fit(method='em', maxiter=1000, tolerance=1e-6, disp=False)
+    predict = res.get_prediction(end=res.model.nobs + 12)
+    means = predict.predicted_mean
+
+    # EKSTRAK PREDIKSI Q1 - Q4 TAHUN 2026
+    preds = []
+    for q in range(1, 5):
+        val = get_prediction_value(means, 'RGDP_growth', pd.Period(year=2026, quarter=q, freq='Q'))
+        preds.append(val if pd.notna(val) else 5.0) # Fallback jika NaN
+        
+    return preds
 
 # ==========================================
 # 4. EXECUTION DASHBOARD PDB
@@ -157,7 +236,7 @@ if df_target is not None:
         combined_2025.append(val)
 
     t_2026 = df_target[df_target['Tahun'] == 2026]['Target'].values[0] if 2026 in df_target['Tahun'].values else 5.4
-    preds_2026 = calculate_econometric_projection(df_hist_gdp, combined_2025, t_2026)
+    preds_2026 = run_dfm_engine_for_dashboard()
 
     real_2026 = [None, None, None, None]
     now_2026 = preds_2026
@@ -199,21 +278,22 @@ if df_target is not None:
         full_x_proj, full_y_proj = [x_2025[-1]] + x_2026, [combined_2025[-1]] + preds_2026
         current_avg, current_target = np.mean(preds_2026), t_2026
 
+    # UPDATE JUDUL CHART DFM
     title_text = f"Outlook Ekonomi: {selected_view}"
-    if selected_view == "2026": title_text += " (Proyeksi Holt-Winters)"
-    elif selected_view == "Full Trajectory": title_text = "Historis & Proyeksi Ekonomi (2010 - 2026)"
+    if selected_view == "2026": title_text += " (Model: Dynamic Factor MQ)"
+    elif selected_view == "Full Trajectory": title_text = "Historis & Proyeksi Ekonomi (DFM Model)"
 
     st.markdown(f"### {title_text}")
     fig = go.Figure()
 
     if selected_view == "Full Trajectory":
         fig.add_trace(go.Scatter(x=full_x_real, y=full_y_real, name='Realisasi (2010-2025)', mode='lines', line=dict(color='#f1c40f', width=2.5)))
-        fig.add_trace(go.Scatter(x=full_x_proj, y=full_y_proj, name='Proyeksi 2026', mode='lines', line=dict(color='#27ae60', width=2.5, dash='dot')))
+        fig.add_trace(go.Scatter(x=full_x_proj, y=full_y_proj, name='Proyeksi DFM 2026', mode='lines', line=dict(color='#27ae60', width=2.5, dash='dot')))
         fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', legend=dict(orientation="h", y=1.1), height=450)
     else:
         fig.add_trace(go.Bar(x=final_x, y=final_real, name='Realisasi (BPS)', marker_color='#2980b9', text=[f"{v:.2f}%" if v else "" for v in final_real], textposition='auto'))
         if selected_view == "2026":
-            fig.add_trace(go.Scatter(x=final_x, y=final_now, name='Proyeksi Model (Seasonal)', mode='lines+markers', line=dict(color='#f39c12', width=4, shape='spline'), text=[f"{v:.2f}%" for v in final_now], textposition='top center'))
+            fig.add_trace(go.Scatter(x=final_x, y=final_now, name='DFM Nowcasting', mode='lines+markers', line=dict(color='#f39c12', width=4, shape='spline'), text=[f"{v:.2f}%" for v in final_now], textposition='top center'))
         else:
             fig.add_trace(go.Bar(x=final_x, y=final_now, name='Nowcasting', marker_color='#f39c12', text=[f"{v:.2f}%" if v else "" for v in final_now], textposition='auto'))
         fig.add_trace(go.Scatter(x=final_x, y=final_target, name='Target APBN', mode='lines', line=dict(color='#c0392b', width=3, dash='dash')))
