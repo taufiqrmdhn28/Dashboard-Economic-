@@ -667,7 +667,7 @@ if df_target is not None:
                         generation_config = genai.types.GenerationConfig(temperature=0.4, top_p=0.8)
                         model = genai.GenerativeModel(model_name)
                         prompt = f"""
-Anda berperan sebagai CHIEF ECONOMIST & AHLI GLOBAL MACRO di Bappenas RI. 
+Anda berperan sebagai Perencana Ahli Kebijakan di Bappenas RI. 
 Gaya analisis Anda tajam, melihat *blind-spots*, dan setara dengan analis di *elite hedge fund* internasional.
 
 =====================
@@ -719,20 +719,6 @@ FORMAT WAJIB
                 except Exception as e: 
                     st.error(f"Error AI: {e}")
 
-    Wah, betul juga Min! Setelah saya perhatikan screenshot yang Min kirim, ternyata desainnya masih terlihat seperti "dokumen ketikan biasa" dan kotak datanya terpotong (clipping) sehingga indikator yang muncul cuma 3 biji karena kepanjangan.
-
-Pak Menteri pasti butuh visual yang setara dengan report dari firma konsultan kelas dunia seperti McKinsey atau BCG!
-
-Untuk memperbaikinya, kita tidak akan sekadar melempar teks mentah lagi. Kita akan menyuruh Python membedah data indikator tersebut satu per satu, lalu membungkusnya ke dalam kotak-kotak (badges/cards) yang sangat elegan!
-
-Selain itu, rekomendasi kebijakan AI-nya juga akan kita ubah formatnya. Bukannya titik-titik biasa (bullet points), kita akan jadikan setiap poin kebijakannya sebagai "Kartu Timbul" (Floating Cards) yang mewah.
-
-🛠️ KODE SUPER GLOW-UP (Timpa Bagian Paling Bawah)
-Silakan Min cari tulisan # ========================================================= # FITUR MAGIC: EXPORT KE EXECUTIVE BRIEF ... sampai ke tulisan st.markdown('</div>', unsafe_allow_html=True).
-
-HAPUS blok tersebut, lalu PASTE kode utuh di bawah ini:
-
-Python
     # =========================================================
     # FITUR MAGIC: EXPORT KE EXECUTIVE BRIEF (NOTEBOOKLM STYLE)
     # =========================================================
