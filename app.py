@@ -729,39 +729,41 @@ FORMAT WAJIB
         
         try:
             import markdown
+            import re
             
-            # 1. Bypass Kaleido: Ubah grafik langsung jadi elemen HTML Interaktif
+            # 1. Bypass Kaleido: Grafik ke HTML Interaktif
             chart_html = fig.to_html(full_html=False, include_plotlyjs='cdn', default_height='450px')
             
-            # 2. RENDER TEKS AI MENJADI KARTU MEWAH
+            # 2. RENDER TEKS AI (SUPER GLOW-UP)
             html_policy = markdown.markdown(final_policy_text)
             html_policy = html_policy.replace("<ul>", "<ul class='premium-list'>")
             html_policy = html_policy.replace("<li>", "<li>")
-            html_policy = html_policy.replace("<h3>", "<h3 class='ai-heading'>")
+            html_policy = html_policy.replace("<h3>", "<h3 class='policy-title'>✨ ")
+            html_policy = html_policy.replace("<strong>", "<strong class='highlight-text'>")
             
-            # 3. BEDAH DATA MENJADI LIST ELEGAN (MEMUNCULKAN SEMUA INDIKATOR)
-            html_daily = "<ul class='data-list'>"
-            for item in daily_summary_str.split(' | '):
-                if item.strip() and item.strip() != "Data harian tidak tersedia.":
-                    html_daily += f"<li><span class='bullet-blue'></span>{item.strip()}</li>"
-            html_daily += "</ul>"
-            if not html_daily.replace("<ul class='data-list'></ul>", ""): html_daily = "<p>Data Harian tidak tersedia.</p>"
-
-            html_heatmap = "<ul class='data-list'>"
-            for item in heatmap_summary_str.split(' | '):
-                if item.strip() and item.strip() != "Data Heatmap tidak tersedia.":
-                    if 'Positif' in item or 'Hijau' in item:
-                        clean_text = item.replace('Momentum Positif (Hijau)', '').replace('()', '').strip()
-                        html_heatmap += f"<li><span class='badge-green'>▲ POSITIF</span> {clean_text}</li>"
-                    elif 'Negatif' in item or 'Merah' in item:
-                        clean_text = item.replace('Momentum Negatif (Merah)', '').replace('()', '').strip()
-                        html_heatmap += f"<li><span class='badge-red'>▼ NEGATIF</span> {clean_text}</li>"
+            # 3. BEDAH SEMUA DATA BULANAN (Menampilkan Seluruh Indikator Sektor Riil)
+            html_monthly = "<div class='monthly-grid'>"
+            for item in re.split(r'\||\n', monthly_summary_str):
+                item_clean = item.strip()
+                if item_clean and "tidak tersedia" not in item_clean.lower():
+                    # Styling dinamis: Beri warna merah jika ada tanda minus, biru jika positif
+                    if "-" in item_clean:
+                        html_monthly += f"<div class='m-card negative'><div class='m-icon'>🔻</div><div class='m-text'>{item_clean}</div></div>"
                     else:
-                        html_heatmap += f"<li><span class='badge-gray'>▬ STAGNAN</span> {item.strip()}</li>"
-            html_heatmap += "</ul>"
-            if not html_heatmap.replace("<ul class='data-list'></ul>", ""): html_heatmap = "<p>Data Heatmap tidak tersedia.</p>"
+                        html_monthly += f"<div class='m-card positive'><div class='m-icon'>🔹</div><div class='m-text'>{item_clean}</div></div>"
+            html_monthly += "</div>"
+            if "<div class='m-card" not in html_monthly: html_monthly = "<p>Data Sektor Riil tidak tersedia.</p>"
 
-            # 4. TEMPLATE HTML/CSS PREMIUM (MCKINSEY / BCG STYLE)
+            # 4. BEDAH DATA HARIAN (Pasar)
+            html_daily = "<div class='market-ticker'>"
+            for item in re.split(r'\||\n', daily_summary_str):
+                item_clean = item.strip()
+                if item_clean and "tidak tersedia" not in item_clean.lower():
+                    html_daily += f"<div class='ticker-item'>⚡ {item_clean}</div>"
+            html_daily += "</div>"
+            if "<div class='ticker-item" not in html_daily: html_daily = "<p>Data Harian tidak tersedia.</p>"
+
+            # 5. TEMPLATE HTML/CSS PREMIUM (MCKINSEY / BCG STYLE)
             html_template = f"""
             <!DOCTYPE html>
             <html lang="id">
@@ -769,221 +771,209 @@ FORMAT WAJIB
                 <meta charset="UTF-8">
                 <title>Executive Brief: Macroeconomic Update RI</title>
                 <style>
-                    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&family=Merriweather:ital,wght@0,300;1,300&display=swap');
+                    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;800&display=swap');
                     
-                    body {{
-                        font-family: 'Plus Jakarta Sans', sans-serif;
+                    body {{ 
+                        font-family: 'Plus Jakarta Sans', sans-serif; 
                         background-color: #cbd5e1; /* Warna latar belakang meja abu-abu */
-                        color: #1e293b;
-                        line-height: 1.7;
-                        padding: 50px 20px;
+                        color: #334155; 
+                        padding: 50px 20px; 
+                        line-height: 1.6; 
                         margin: 0;
                     }}
-                    .report-container {{
-                        max-width: 1000px;
-                        margin: 0 auto;
-                        background: #ffffff;
-                        border-radius: 24px;
-                        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35); /* Efek kertas melayang */
-                        overflow: hidden;
-                    }}
-                    .header {{
-                        background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
-                        color: white;
-                        padding: 60px 50px;
-                        position: relative;
-                    }}
-                    .badge-top {{
-                        background: rgba(255,255,255,0.15);
-                        padding: 6px 16px;
-                        border-radius: 20px;
-                        font-size: 12px;
-                        font-weight: 800;
-                        letter-spacing: 1.5px;
-                        text-transform: uppercase;
-                        color: #e2e8f0;
-                        border: 1px solid rgba(255,255,255,0.2);
-                        display: inline-block;
-                        margin-bottom: 20px;
-                        backdrop-filter: blur(4px);
-                    }}
-                    .header h1 {{
-                        font-weight: 800;
-                        font-size: 38px;
-                        margin: 0 0 10px 0;
-                        line-height: 1.2;
-                        color: #f8fafc;
-                        letter-spacing: -0.5px;
-                    }}
-                    .header p.subtitle {{
-                        font-family: 'Merriweather', serif;
-                        font-style: italic;
-                        color: #94a3b8;
-                        font-size: 16px;
-                        margin: 0;
-                    }}
-                    .content {{
-                        padding: 50px;
-                    }}
-                    .section-title {{
-                        font-size: 22px;
-                        font-weight: 800;
-                        color: #0f172a;
-                        display: flex;
-                        align-items: center;
-                        gap: 12px;
-                        margin-top: 0;
-                        margin-bottom: 25px;
-                        border-bottom: 2px solid #f1f5f9;
-                        padding-bottom: 15px;
-                    }}
-                    .section-title span {{
-                        background: #eff6ff;
-                        color: #2563eb;
-                        padding: 8px;
-                        border-radius: 10px;
-                        font-size: 18px;
-                    }}
-                    .chart-box {{
-                        background: #ffffff;
-                        border: 1px solid #e2e8f0;
-                        border-radius: 16px;
-                        padding: 5px;
-                        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-                        margin-bottom: 40px;
+                    .report-container {{ 
+                        max-width: 1100px; 
+                        margin: 0 auto; 
+                        background: #ffffff; 
+                        border-radius: 20px; 
+                        box-shadow: 0 25px 50px -12px rgba(0,0,0,0.3); 
+                        padding: 60px 70px; 
                     }}
                     
-                    /* PERBAIKAN LAYOUT DATA BOX (BIAR TIDAK KEPOTONG) */
-                    .grid-2 {{
-                        display: grid;
-                        grid-template-columns: 1fr 1fr;
-                        gap: 30px;
-                        margin-bottom: 40px;
-                        align-items: start;
+                    /* HEADER STYLE */
+                    .badge-top {{ 
+                        display: inline-block; 
+                        background: #ef4444; 
+                        color: white; 
+                        font-size: 11px; 
+                        font-weight: 800; 
+                        padding: 6px 14px; 
+                        border-radius: 8px; 
+                        letter-spacing: 1.5px; 
+                        margin-bottom: 20px; 
+                        text-transform: uppercase; 
                     }}
-                    .info-card {{
+                    .header-title {{ 
+                        font-size: 42px; 
+                        font-weight: 800; 
+                        color: #0f172a; 
+                        margin: 0 0 10px 0; 
+                        line-height: 1.2; 
+                        letter-spacing: -1px; 
+                    }}
+                    .header-subtitle {{ 
+                        font-size: 18px; 
+                        color: #64748b; 
+                        margin: 0 0 40px 0; 
+                        border-bottom: 2px solid #f1f5f9; 
+                        padding-bottom: 30px; 
+                    }}
+                    
+                    /* SECTION TITLE */
+                    .section-label {{ 
+                        font-size: 22px; 
+                        font-weight: 800; 
+                        color: #0f172a; 
+                        display: flex; 
+                        align-items: center; 
+                        gap: 12px; 
+                        margin: 40px 0 25px 0; 
+                    }}
+                    .section-label span {{ 
+                        background: #eff6ff; 
+                        border: 1px solid #bfdbfe; 
+                        padding: 8px 12px; 
+                        border-radius: 10px; 
+                        font-size: 18px; 
+                    }}
+                    
+                    /* CHART WRAPPER */
+                    .chart-wrapper {{ 
+                        background: #ffffff; 
+                        border: 1px solid #e2e8f0; 
+                        border-radius: 16px; 
+                        padding: 10px; 
+                        box-shadow: 0 4px 10px rgba(0,0,0,0.03); 
+                        margin-bottom: 50px; 
+                    }}
+                    
+                    /* GRID LAYOUT UNTUK DATA */
+                    .grid-container {{ 
+                        display: grid; 
+                        grid-template-columns: 2fr 1fr; 
+                        gap: 40px; 
+                        align-items: start; 
+                    }}
+                    
+                    /* KOTAK-KOTAK SELURUH INDIKATOR */
+                    .monthly-grid {{ 
+                        display: grid; 
+                        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); 
+                        gap: 12px; 
+                    }}
+                    .m-card {{ 
+                        display: flex; 
+                        align-items: flex-start; 
+                        gap: 12px; 
+                        padding: 16px; 
+                        border-radius: 12px; 
+                        border: 1px solid #e2e8f0; 
+                        background: #f8fafc; 
+                        font-size: 14px; 
+                        font-weight: 600; 
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.02); 
+                    }}
+                    .m-card.negative {{ border-left: 4px solid #ef4444; }}
+                    .m-card.positive {{ border-left: 4px solid #3b82f6; }}
+                    .m-icon {{ font-size: 16px; flex-shrink: 0; margin-top: -2px; }}
+                    
+                    /* DATA HARIAN (PASAR) */
+                    .market-ticker {{ 
+                        display: flex; 
+                        flex-direction: column; 
+                        gap: 12px; 
                         background: #f8fafc;
+                        padding: 20px;
                         border-radius: 16px;
-                        padding: 25px;
                         border: 1px solid #e2e8f0;
-                        position: relative;
-                        height: 100%;
                     }}
-                    .info-card::before {{
-                        content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 6px;
-                    }}
-                    .info-card.volatility::before {{ background: #f59e0b; border-radius: 16px 16px 0 0; }} 
-                    .info-card.heatmap::before {{ background: #10b981; border-radius: 16px 16px 0 0; }}
-                    
-                    .info-card h3 {{
-                        margin: 0 0 20px 0;
-                        font-size: 15px;
-                        color: #334155;
-                        text-transform: uppercase;
-                        letter-spacing: 1px;
-                        font-weight: 800;
+                    .ticker-item {{ 
+                        background: #fff7ed; 
+                        border: 1px solid #fed7aa; 
+                        color: #9a3412; 
+                        padding: 14px; 
+                        border-radius: 10px; 
+                        font-size: 14px; 
+                        font-weight: 600; 
                     }}
                     
-                    /* STYLING LIST DATA YANG MEWAH */
-                    .data-list {{ list-style: none; padding: 0; margin: 0; }}
-                    .data-list li {{
-                        background: #ffffff;
-                        margin-bottom: 10px;
-                        padding: 12px 15px;
-                        border-radius: 10px;
-                        border: 1px solid #e2e8f0;
-                        font-size: 13.5px;
-                        color: #334155;
-                        display: flex;
-                        align-items: center;
-                        gap: 12px;
-                        box-shadow: 0 1px 3px rgba(0,0,0,0.02);
-                        font-weight: 600;
+                    /* REKOMENDASI AI YANG LEBIH HIDUP */
+                    .ai-box {{ 
+                        background: linear-gradient(145deg, #f8fafc, #eff6ff); 
+                        border: 1px solid #bfdbfe; 
+                        border-radius: 20px; 
+                        padding: 40px; 
+                        margin-top: 50px; 
+                        position: relative; 
                     }}
-                    .bullet-blue {{ display: inline-block; width: 10px; height: 10px; background: #3b82f6; border-radius: 50%; flex-shrink: 0; }}
-                    .badge-green {{ background: #dcfce7; color: #166534; padding: 4px 8px; border-radius: 6px; font-weight: 800; font-size: 11px; white-space: nowrap; flex-shrink: 0; }}
-                    .badge-red {{ background: #fee2e2; color: #991b1b; padding: 4px 8px; border-radius: 6px; font-weight: 800; font-size: 11px; white-space: nowrap; flex-shrink: 0; }}
-                    .badge-gray {{ background: #f1f5f9; color: #475569; padding: 4px 8px; border-radius: 6px; font-weight: 800; font-size: 11px; white-space: nowrap; flex-shrink: 0; }}
-
-                    /* STYLING AI POLICY YANG LEBIH HIDUP */
-                    .ai-box {{
-                        background: linear-gradient(to bottom right, #ffffff, #f0f9ff);
-                        border-radius: 20px;
-                        padding: 40px;
-                        border: 1px solid #bae6fd;
-                        box-shadow: inset 0 2px 4px 0 rgba(255, 255, 255, 0.5);
+                    .ai-box::before {{ 
+                        content:''; 
+                        position: absolute; top:0; left:0; width:100%; height:6px; 
+                        background: linear-gradient(90deg, #2563eb, #9333ea); 
+                        border-radius: 20px 20px 0 0; 
                     }}
-                    .ai-heading {{ 
+                    .policy-title {{ 
                         color: #1e3a8a; 
-                        border-bottom: 2px solid #bfdbfe; 
-                        padding-bottom: 10px; 
-                        margin-top: 30px; 
-                        font-weight: 800;
-                        display: flex;
-                        align-items: center;
-                        gap: 8px;
+                        font-size: 20px; 
+                        font-weight: 800; 
+                        border-bottom: 2px dashed #cbd5e1; 
+                        padding-bottom: 12px; 
+                        margin-top: 35px; 
+                        margin-bottom: 20px; 
                     }}
-                    .ai-heading::before {{ content: '🎯'; }}
-                    
-                    .premium-list {{ list-style: none; padding: 0; }}
-                    .premium-list li {{
-                        background: #ffffff;
-                        margin-bottom: 15px;
-                        padding: 18px 25px;
-                        border-radius: 12px;
-                        border-left: 6px solid #2563eb;
-                        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
-                        color: #1e293b;
-                        font-size: 14.5px;
-                        transition: transform 0.2s;
+                    .premium-list {{ list-style: none; padding: 0; margin: 0; }}
+                    .premium-list li {{ 
+                        background: #ffffff; 
+                        border: 1px solid #e2e8f0; 
+                        border-left: 5px solid #3b82f6; 
+                        padding: 25px 30px; 
+                        border-radius: 12px; 
+                        margin-bottom: 15px; 
+                        box-shadow: 0 4px 15px rgba(0,0,0,0.03); 
+                        font-size: 15.5px; 
+                        color: #1e293b; 
                     }}
-                    .premium-list li:hover {{ transform: translateX(5px); }}
+                    .highlight-text {{ color: #2563eb; font-weight: 800; }}
                     
-                    .footer {{
-                        text-align: center;
-                        padding: 30px;
-                        background: #f8fafc;
-                        color: #64748b;
-                        font-size: 13px;
-                        border-top: 1px solid #e2e8f0;
-                        font-family: 'Merriweather', serif;
-                        font-style: italic;
+                    .footer {{ 
+                        text-align: center; 
+                        padding: 30px; 
+                        margin-top: 50px;
+                        color: #94a3b8; 
+                        font-size: 13px; 
+                        border-top: 1px solid #e2e8f0; 
                     }}
                 </style>
             </head>
             <body>
                 <div class="report-container">
-                    <div class="header">
-                        <div class="badge-top">Sangat Rahasia / Strictly Confidential</div>
-                        <h1>Executive Macroeconomic Brief</h1>
-                        <p class="subtitle">Analisis Global Macro & Sintesis Kebijakan AI Command Center</p>
+                    <div class="badge-top">Strictly Confidential</div>
+                    <h1 class="header-title">Executive Macroeconomic Brief</h1>
+                    <p class="header-subtitle">Analisis DFM & Sintesis Kebijakan AI Command Center Bappenas RI</p>
+
+                    <div class="section-label"><span>📈</span> Proyeksi Pertumbuhan Ekonomi (DFM)</div>
+                    <div class="chart-wrapper">
+                        {chart_html}
                     </div>
 
-                    <div class="content">
-                        <h2 class="section-title"><span>📊</span> Proyeksi Pertumbuhan Ekonomi (DFM)</h2>
-                        <div class="chart-box">
-                            {chart_html}
+                    <div class="grid-container">
+                        <div>
+                            <div class="section-label" style="margin-top: 0;"><span>🏢</span> Kinerja Seluruh Sektor Riil</div>
+                            {html_monthly}
                         </div>
+                        <div>
+                            <div class="section-label" style="margin-top: 0;"><span>⚡</span> Volatilitas Pasar Harian</div>
+                            {html_daily}
+                        </div>
+                    </div>
 
-                        <div class="grid-2">
-                            <div class="info-card volatility">
-                                <h3>📈 Volatilitas Pasar Harian</h3>
-                                {html_daily}
-                            </div>
-                            <div class="info-card heatmap">
-                                <h3>🗺️ Sentimen Sektor Riil (YoY)</h3>
-                                {html_heatmap}
-                            </div>
-                        </div>
-
-                        <div class="ai-box">
-                            <h2 class="section-title" style="border:none; padding:0; margin-bottom: 20px;"><span>🧠</span> Sintesis & Rekomendasi AI</h2>
-                            {html_policy}
-                        </div>
+                    <div class="ai-box">
+                        <div class="section-label" style="margin-top: 0; border:none; padding:0;"><span>🧠</span> Sintesis & Rekomendasi AI</div>
+                        {html_policy}
                     </div>
                     
                     <div class="footer">
-                        Dokumen ini dihasilkan secara otomatis menggunakan model AI Global Macro Bappenas.<br>
+                        Dokumen ini dihasilkan secara otomatis menggunakan model AI Global Macro.<br>
                         Dicetak pada: <strong>{pd.Timestamp.now().strftime('%d %B %Y %H:%M')} WIB</strong>
                     </div>
                 </div>
@@ -991,9 +981,9 @@ FORMAT WAJIB
             </html>
             """
             
-            # 5. Tombol Download HTML
+            # 6. Tombol Download HTML
             st.download_button(
-                label="📥 Download Executive Brief (.html)",
+                label="📥 Download Laporan Eksekutif Premium (.html)",
                 data=html_template,
                 file_name="Executive_Brief_Bappenas.html",
                 mime="text/html",
