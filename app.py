@@ -741,13 +741,12 @@ FORMAT WAJIB
             html_policy = html_policy.replace("<h3>", "<h3 class='policy-title'>✨ ")
             html_policy = html_policy.replace("<strong>", "<strong class='highlight-text'>")
             
-            # 3. BEDAH SEMUA DATA BULANAN (Sektor Riil) -> Format List Vertikal Rapi
+            # 3. BEDAH SEMUA DATA BULANAN (Sektor Riil)
             clean_monthly = monthly_summary_str.replace('\n', ' | ')
             html_monthly = "<ul class='data-list'>"
             for item in clean_monthly.split(' | '):
                 item_clean = item.strip()
                 if item_clean and "tidak tersedia" not in item_clean.lower():
-                    # Kasih badge merah kalau ada minus, biru kalau positif
                     if "-" in item_clean:
                         html_monthly += f"<li><span class='badge-red'>▼</span> {item_clean}</li>"
                     else:
@@ -756,7 +755,7 @@ FORMAT WAJIB
             if not html_monthly.replace("<ul class='data-list'></ul>", ""): 
                 html_monthly = "<p>Data Sektor Riil tidak tersedia.</p>"
 
-            # 4. BEDAH DATA HARIAN (Pasar) -> Format List Vertikal Rapi
+            # 4. BEDAH DATA HARIAN (Pasar)
             clean_daily = daily_summary_str.replace('\n', ' | ')
             html_daily = "<ul class='data-list'>"
             for item in clean_daily.split(' | '):
@@ -767,7 +766,7 @@ FORMAT WAJIB
             if not html_daily.replace("<ul class='data-list'></ul>", ""): 
                 html_daily = "<p>Data Harian tidak tersedia.</p>"
 
-            # 5. TEMPLATE HTML/CSS PREMIUM (HEADER BIRU + LIST RAPI)
+            # 5. TEMPLATE HTML/CSS PREMIUM (LIST MENYAMPING)
             html_template = f"""
             <!DOCTYPE html>
             <html lang="id">
@@ -815,12 +814,10 @@ FORMAT WAJIB
                         letter-spacing: 0.5px;
                     }}
                     
-                    /* PEMBUNGKUS KONTEN BAWAH */
                     .content-body {{
                         padding: 40px 70px 60px 70px;
                     }}
                     
-                    /* SECTION TITLE */
                     .section-label {{ 
                         font-size: 22px; 
                         font-weight: 800; 
@@ -828,7 +825,7 @@ FORMAT WAJIB
                         display: flex; 
                         align-items: center; 
                         gap: 12px; 
-                        margin: 40px 0 25px 0; 
+                        margin: 40px 0 20px 0; 
                     }}
                     .section-label span {{ 
                         background: #eff6ff; 
@@ -838,7 +835,6 @@ FORMAT WAJIB
                         font-size: 18px; 
                     }}
                     
-                    /* CHART WRAPPER */
                     .chart-wrapper {{ 
                         background: #ffffff; 
                         border: 1px solid #e2e8f0; 
@@ -848,20 +844,18 @@ FORMAT WAJIB
                         margin-bottom: 50px; 
                     }}
                     
-                    /* GRID LAYOUT UNTUK LIST KIRI & KANAN */
-                    .grid-container {{ 
+                    /* ===== RAHASIA BIAR MENYAMPING RAPI ===== */
+                    .data-list {{ 
+                        list-style: none; 
+                        padding: 0; 
+                        margin: 0; 
                         display: grid; 
-                        grid-template-columns: 1fr 1fr; 
-                        gap: 40px; 
-                        align-items: start; 
+                        grid-template-columns: repeat(3, 1fr); /* DIBIKIN 3 KOLOM MENYAMPING */
+                        gap: 15px; 
                     }}
-                    
-                    /* STYLE LIST DATA YANG RAPI (Seperti Gambar 2) */
-                    .data-list {{ list-style: none; padding: 0; margin: 0; }}
                     .data-list li {{
                         background: #ffffff;
-                        margin-bottom: 10px;
-                        padding: 12px 15px;
+                        padding: 14px 16px;
                         border-radius: 10px;
                         border: 1px solid #e2e8f0;
                         font-size: 13.5px;
@@ -869,20 +863,21 @@ FORMAT WAJIB
                         display: flex;
                         align-items: center;
                         gap: 12px;
-                        box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
                         font-weight: 600;
+                        margin: 0; /* Margin bawah dihapus karena sudah rapi pakai grid */
                     }}
                     .bullet-blue {{ display: inline-block; width: 10px; height: 10px; background: #3b82f6; border-radius: 50%; flex-shrink: 0; }}
                     .badge-blue {{ background: #dbeafe; color: #1e40af; padding: 4px 8px; border-radius: 6px; font-weight: 800; font-size: 11px; flex-shrink: 0; }}
                     .badge-red {{ background: #fee2e2; color: #991b1b; padding: 4px 8px; border-radius: 6px; font-weight: 800; font-size: 11px; flex-shrink: 0; }}
                     
-                    /* REKOMENDASI AI YANG LEBIH HIDUP */
+                    /* REKOMENDASI AI */
                     .ai-box {{ 
                         background: linear-gradient(145deg, #f8fafc, #eff6ff); 
                         border: 1px solid #bfdbfe; 
                         border-radius: 20px; 
                         padding: 40px; 
-                        margin-top: 50px; 
+                        margin-top: 60px; 
                         position: relative; 
                     }}
                     .ai-box::before {{ 
@@ -938,16 +933,11 @@ FORMAT WAJIB
                             {chart_html}
                         </div>
 
-                        <div class="grid-container">
-                            <div>
-                                <div class="section-label" style="margin-top: 0;"><span>🏢</span> Kinerja Seluruh Sektor Riil</div>
-                                {html_monthly}
-                            </div>
-                            <div>
-                                <div class="section-label" style="margin-top: 0;"><span>⚡</span> Volatilitas Pasar Harian</div>
-                                {html_daily}
-                            </div>
-                        </div>
+                        <div class="section-label"><span>🏢</span> Kinerja Seluruh Sektor Riil</div>
+                        {html_monthly}
+
+                        <div class="section-label"><span>⚡</span> Volatilitas Pasar Harian</div>
+                        {html_daily}
 
                         <div class="ai-box">
                             <div class="section-label" style="margin-top: 0; border:none; padding:0;"><span>🧠</span> Sintesis & Rekomendasi AI</div>
