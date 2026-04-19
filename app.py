@@ -734,35 +734,40 @@ FORMAT WAJIB
             # 1. Bypass Kaleido: Grafik ke HTML Interaktif
             chart_html = fig.to_html(full_html=False, include_plotlyjs='cdn', default_height='450px')
             
-            # 2. RENDER TEKS AI (SUPER GLOW-UP)
+            # 2. RENDER TEKS AI 
             html_policy = markdown.markdown(final_policy_text)
             html_policy = html_policy.replace("<ul>", "<ul class='premium-list'>")
             html_policy = html_policy.replace("<li>", "<li>")
             html_policy = html_policy.replace("<h3>", "<h3 class='policy-title'>✨ ")
             html_policy = html_policy.replace("<strong>", "<strong class='highlight-text'>")
             
-            # 3. BEDAH SEMUA DATA BULANAN (Sektor Riil)
-            html_monthly = "<div class='monthly-grid'>"
-            for item in re.split(r'\||\n', monthly_summary_str):
+            # 3. BEDAH SEMUA DATA BULANAN (Sektor Riil) -> Format List Vertikal Rapi
+            clean_monthly = monthly_summary_str.replace('\n', ' | ')
+            html_monthly = "<ul class='data-list'>"
+            for item in clean_monthly.split(' | '):
                 item_clean = item.strip()
                 if item_clean and "tidak tersedia" not in item_clean.lower():
+                    # Kasih badge merah kalau ada minus, biru kalau positif
                     if "-" in item_clean:
-                        html_monthly += f"<div class='m-card negative'><div class='m-icon'>🔻</div><div class='m-text'>{item_clean}</div></div>"
+                        html_monthly += f"<li><span class='badge-red'>▼</span> {item_clean}</li>"
                     else:
-                        html_monthly += f"<div class='m-card positive'><div class='m-icon'>🔹</div><div class='m-text'>{item_clean}</div></div>"
-            html_monthly += "</div>"
-            if "<div class='m-card" not in html_monthly: html_monthly = "<p>Data Sektor Riil tidak tersedia.</p>"
+                        html_monthly += f"<li><span class='badge-blue'>▲</span> {item_clean}</li>"
+            html_monthly += "</ul>"
+            if not html_monthly.replace("<ul class='data-list'></ul>", ""): 
+                html_monthly = "<p>Data Sektor Riil tidak tersedia.</p>"
 
-            # 4. BEDAH DATA HARIAN (Pasar)
-            html_daily = "<div class='market-ticker'>"
-            for item in re.split(r'\||\n', daily_summary_str):
+            # 4. BEDAH DATA HARIAN (Pasar) -> Format List Vertikal Rapi
+            clean_daily = daily_summary_str.replace('\n', ' | ')
+            html_daily = "<ul class='data-list'>"
+            for item in clean_daily.split(' | '):
                 item_clean = item.strip()
                 if item_clean and "tidak tersedia" not in item_clean.lower():
-                    html_daily += f"<div class='ticker-item'>⚡ {item_clean}</div>"
-            html_daily += "</div>"
-            if "<div class='ticker-item" not in html_daily: html_daily = "<p>Data Harian tidak tersedia.</p>"
+                    html_daily += f"<li><span class='bullet-blue'></span> {item_clean}</li>"
+            html_daily += "</ul>"
+            if not html_daily.replace("<ul class='data-list'></ul>", ""): 
+                html_daily = "<p>Data Harian tidak tersedia.</p>"
 
-            # 5. TEMPLATE HTML/CSS PREMIUM (KOMBINASI BLUE HEADER + GRID)
+            # 5. TEMPLATE HTML/CSS PREMIUM (HEADER BIRU + LIST RAPI)
             html_template = f"""
             <!DOCTYPE html>
             <html lang="id">
@@ -786,10 +791,10 @@ FORMAT WAJIB
                         background: #ffffff; 
                         border-radius: 20px; 
                         box-shadow: 0 25px 50px -12px rgba(0,0,0,0.3); 
-                        overflow: hidden; /* Penting agar header biru tidak keluar dari sudut lengkung */
+                        overflow: hidden; 
                     }}
                     
-                    /* KEMBALIKAN HEADER BIRU GRADASI */
+                    /* HEADER BIRU GRADASI */
                     .header {{
                         background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
                         padding: 50px 70px;
@@ -843,55 +848,33 @@ FORMAT WAJIB
                         margin-bottom: 50px; 
                     }}
                     
-                    /* GRID LAYOUT UNTUK DATA */
+                    /* GRID LAYOUT UNTUK LIST KIRI & KANAN */
                     .grid-container {{ 
                         display: grid; 
-                        grid-template-columns: 2fr 1fr; 
+                        grid-template-columns: 1fr 1fr; 
                         gap: 40px; 
                         align-items: start; 
                     }}
                     
-                    /* KOTAK-KOTAK SELURUH INDIKATOR */
-                    .monthly-grid {{ 
-                        display: grid; 
-                        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); 
-                        gap: 12px; 
-                    }}
-                    .m-card {{ 
-                        display: flex; 
-                        align-items: flex-start; 
-                        gap: 12px; 
-                        padding: 16px; 
-                        border-radius: 12px; 
-                        border: 1px solid #e2e8f0; 
-                        background: #f8fafc; 
-                        font-size: 14px; 
-                        font-weight: 600; 
-                        box-shadow: 0 2px 4px rgba(0,0,0,0.02); 
-                    }}
-                    .m-card.negative {{ border-left: 4px solid #ef4444; }}
-                    .m-card.positive {{ border-left: 4px solid #3b82f6; }}
-                    .m-icon {{ font-size: 16px; flex-shrink: 0; margin-top: -2px; }}
-                    
-                    /* DATA HARIAN (PASAR) */
-                    .market-ticker {{ 
-                        display: flex; 
-                        flex-direction: column; 
-                        gap: 12px; 
-                        background: #f8fafc;
-                        padding: 20px;
-                        border-radius: 16px;
+                    /* STYLE LIST DATA YANG RAPI (Seperti Gambar 2) */
+                    .data-list {{ list-style: none; padding: 0; margin: 0; }}
+                    .data-list li {{
+                        background: #ffffff;
+                        margin-bottom: 10px;
+                        padding: 12px 15px;
+                        border-radius: 10px;
                         border: 1px solid #e2e8f0;
+                        font-size: 13.5px;
+                        color: #334155;
+                        display: flex;
+                        align-items: center;
+                        gap: 12px;
+                        box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+                        font-weight: 600;
                     }}
-                    .ticker-item {{ 
-                        background: #fff7ed; 
-                        border: 1px solid #fed7aa; 
-                        color: #9a3412; 
-                        padding: 14px; 
-                        border-radius: 10px; 
-                        font-size: 14px; 
-                        font-weight: 600; 
-                    }}
+                    .bullet-blue {{ display: inline-block; width: 10px; height: 10px; background: #3b82f6; border-radius: 50%; flex-shrink: 0; }}
+                    .badge-blue {{ background: #dbeafe; color: #1e40af; padding: 4px 8px; border-radius: 6px; font-weight: 800; font-size: 11px; flex-shrink: 0; }}
+                    .badge-red {{ background: #fee2e2; color: #991b1b; padding: 4px 8px; border-radius: 6px; font-weight: 800; font-size: 11px; flex-shrink: 0; }}
                     
                     /* REKOMENDASI AI YANG LEBIH HIDUP */
                     .ai-box {{ 
