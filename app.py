@@ -719,6 +719,20 @@ FORMAT WAJIB
                 except Exception as e: 
                     st.error(f"Error AI: {e}")
 
+    Wah, betul juga Min! Setelah saya perhatikan screenshot yang Min kirim, ternyata desainnya masih terlihat seperti "dokumen ketikan biasa" dan kotak datanya terpotong (clipping) sehingga indikator yang muncul cuma 3 biji karena kepanjangan.
+
+Pak Menteri pasti butuh visual yang setara dengan report dari firma konsultan kelas dunia seperti McKinsey atau BCG!
+
+Untuk memperbaikinya, kita tidak akan sekadar melempar teks mentah lagi. Kita akan menyuruh Python membedah data indikator tersebut satu per satu, lalu membungkusnya ke dalam kotak-kotak (badges/cards) yang sangat elegan!
+
+Selain itu, rekomendasi kebijakan AI-nya juga akan kita ubah formatnya. Bukannya titik-titik biasa (bullet points), kita akan jadikan setiap poin kebijakannya sebagai "Kartu Timbul" (Floating Cards) yang mewah.
+
+🛠️ KODE SUPER GLOW-UP (Timpa Bagian Paling Bawah)
+Silakan Min cari tulisan # ========================================================= # FITUR MAGIC: EXPORT KE EXECUTIVE BRIEF ... sampai ke tulisan st.markdown('</div>', unsafe_allow_html=True).
+
+HAPUS blok tersebut, lalu PASTE kode utuh di bawah ini:
+
+Python
     # =========================================================
     # FITUR MAGIC: EXPORT KE EXECUTIVE BRIEF (NOTEBOOKLM STYLE)
     # =========================================================
@@ -730,18 +744,38 @@ FORMAT WAJIB
         try:
             import markdown
             
-            # 1. JALUR NINJA: Ubah grafik langsung jadi elemen HTML Interaktif (Bypass Kaleido)
+            # 1. Bypass Kaleido: Ubah grafik langsung jadi elemen HTML Interaktif
             chart_html = fig.to_html(full_html=False, include_plotlyjs='cdn', default_height='450px')
             
-            # 2. Render Teks Markdown AI ke HTML Standard
+            # 2. RENDER TEKS AI MENJADI KARTU MEWAH
             html_policy = markdown.markdown(final_policy_text)
+            html_policy = html_policy.replace("<ul>", "<ul class='premium-list'>")
+            html_policy = html_policy.replace("<li>", "<li>")
+            html_policy = html_policy.replace("<h3>", "<h3 class='ai-heading'>")
             
-            # Perbaiki tampilan list/ul dari Markdown agar lebih rapi di HTML
-            html_policy = html_policy.replace("<ul>", "<ul style='padding-left: 20px; color: #334155;'>")
-            html_policy = html_policy.replace("<li>", "<li style='margin-bottom: 12px;'>")
-            html_policy = html_policy.replace("<h3>", "<h3 style='color: #1e40af; border-bottom: 1px solid #bfdbfe; padding-bottom: 10px; margin-top: 25px;'>")
-            
-            # 3. Bikin Template HTML/CSS Premium (SUPER GLOW-UP ALA KONSULTAN)
+            # 3. BEDAH DATA MENJADI LIST ELEGAN (MEMUNCULKAN SEMUA INDIKATOR)
+            html_daily = "<ul class='data-list'>"
+            for item in daily_summary_str.split(' | '):
+                if item.strip() and item.strip() != "Data harian tidak tersedia.":
+                    html_daily += f"<li><span class='bullet-blue'></span>{item.strip()}</li>"
+            html_daily += "</ul>"
+            if not html_daily.replace("<ul class='data-list'></ul>", ""): html_daily = "<p>Data Harian tidak tersedia.</p>"
+
+            html_heatmap = "<ul class='data-list'>"
+            for item in heatmap_summary_str.split(' | '):
+                if item.strip() and item.strip() != "Data Heatmap tidak tersedia.":
+                    if 'Positif' in item or 'Hijau' in item:
+                        clean_text = item.replace('Momentum Positif (Hijau)', '').replace('()', '').strip()
+                        html_heatmap += f"<li><span class='badge-green'>▲ POSITIF</span> {clean_text}</li>"
+                    elif 'Negatif' in item or 'Merah' in item:
+                        clean_text = item.replace('Momentum Negatif (Merah)', '').replace('()', '').strip()
+                        html_heatmap += f"<li><span class='badge-red'>▼ NEGATIF</span> {clean_text}</li>"
+                    else:
+                        html_heatmap += f"<li><span class='badge-gray'>▬ STAGNAN</span> {item.strip()}</li>"
+            html_heatmap += "</ul>"
+            if not html_heatmap.replace("<ul class='data-list'></ul>", ""): html_heatmap = "<p>Data Heatmap tidak tersedia.</p>"
+
+            # 4. TEMPLATE HTML/CSS PREMIUM (MCKINSEY / BCG STYLE)
             html_template = f"""
             <!DOCTYPE html>
             <html lang="id">
@@ -753,14 +787,14 @@ FORMAT WAJIB
                     
                     body {{
                         font-family: 'Plus Jakarta Sans', sans-serif;
-                        background-color: #cbd5e1; /* Warna meja abu-abu */
+                        background-color: #cbd5e1; /* Warna latar belakang meja abu-abu */
                         color: #1e293b;
                         line-height: 1.7;
                         padding: 50px 20px;
                         margin: 0;
                     }}
                     .report-container {{
-                        max-width: 950px;
+                        max-width: 1000px;
                         margin: 0 auto;
                         background: #ffffff;
                         border-radius: 24px;
@@ -768,7 +802,7 @@ FORMAT WAJIB
                         overflow: hidden;
                     }}
                     .header {{
-                        background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%); /* Bappenas Blue */
+                        background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
                         color: white;
                         padding: 60px 50px;
                         position: relative;
@@ -832,40 +866,60 @@ FORMAT WAJIB
                         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
                         margin-bottom: 40px;
                     }}
+                    
+                    /* PERBAIKAN LAYOUT DATA BOX (BIAR TIDAK KEPOTONG) */
                     .grid-2 {{
                         display: grid;
                         grid-template-columns: 1fr 1fr;
                         gap: 30px;
                         margin-bottom: 40px;
+                        align-items: start;
                     }}
                     .info-card {{
                         background: #f8fafc;
                         border-radius: 16px;
-                        padding: 30px;
-                        border: 1px solid #f1f5f9;
+                        padding: 25px;
+                        border: 1px solid #e2e8f0;
                         position: relative;
-                        overflow: hidden;
+                        height: 100%;
                     }}
                     .info-card::before {{
-                        content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 5px;
+                        content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 6px;
                     }}
-                    .info-card.volatility::before {{ background: #f59e0b; }} /* Aksen Emas */
-                    .info-card.heatmap::before {{ background: #10b981; }} /* Aksen Hijau */
+                    .info-card.volatility::before {{ background: #f59e0b; border-radius: 16px 16px 0 0; }} 
+                    .info-card.heatmap::before {{ background: #10b981; border-radius: 16px 16px 0 0; }}
                     
                     .info-card h3 {{
-                        margin: 0 0 15px 0;
+                        margin: 0 0 20px 0;
                         font-size: 15px;
-                        color: #475569;
+                        color: #334155;
                         text-transform: uppercase;
                         letter-spacing: 1px;
                         font-weight: 800;
                     }}
-                    .info-card p {{
-                        margin: 0;
-                        font-size: 14px;
-                        line-height: 1.8;
+                    
+                    /* STYLING LIST DATA YANG MEWAH */
+                    .data-list {{ list-style: none; padding: 0; margin: 0; }}
+                    .data-list li {{
+                        background: #ffffff;
+                        margin-bottom: 10px;
+                        padding: 12px 15px;
+                        border-radius: 10px;
+                        border: 1px solid #e2e8f0;
+                        font-size: 13.5px;
                         color: #334155;
+                        display: flex;
+                        align-items: center;
+                        gap: 12px;
+                        box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+                        font-weight: 600;
                     }}
+                    .bullet-blue {{ display: inline-block; width: 10px; height: 10px; background: #3b82f6; border-radius: 50%; flex-shrink: 0; }}
+                    .badge-green {{ background: #dcfce7; color: #166534; padding: 4px 8px; border-radius: 6px; font-weight: 800; font-size: 11px; white-space: nowrap; flex-shrink: 0; }}
+                    .badge-red {{ background: #fee2e2; color: #991b1b; padding: 4px 8px; border-radius: 6px; font-weight: 800; font-size: 11px; white-space: nowrap; flex-shrink: 0; }}
+                    .badge-gray {{ background: #f1f5f9; color: #475569; padding: 4px 8px; border-radius: 6px; font-weight: 800; font-size: 11px; white-space: nowrap; flex-shrink: 0; }}
+
+                    /* STYLING AI POLICY YANG LEBIH HIDUP */
                     .ai-box {{
                         background: linear-gradient(to bottom right, #ffffff, #f0f9ff);
                         border-radius: 20px;
@@ -873,9 +927,31 @@ FORMAT WAJIB
                         border: 1px solid #bae6fd;
                         box-shadow: inset 0 2px 4px 0 rgba(255, 255, 255, 0.5);
                     }}
-                    .ai-box h3 {{ color: #1e40af; border-bottom: 1px solid #bfdbfe; padding-bottom: 10px; margin-top: 25px; }}
-                    .ai-box ul {{ padding-left: 20px; color: #334155; }}
-                    .ai-box li {{ margin-bottom: 12px; }}
+                    .ai-heading {{ 
+                        color: #1e3a8a; 
+                        border-bottom: 2px solid #bfdbfe; 
+                        padding-bottom: 10px; 
+                        margin-top: 30px; 
+                        font-weight: 800;
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
+                    }}
+                    .ai-heading::before {{ content: '🎯'; }}
+                    
+                    .premium-list {{ list-style: none; padding: 0; }}
+                    .premium-list li {{
+                        background: #ffffff;
+                        margin-bottom: 15px;
+                        padding: 18px 25px;
+                        border-radius: 12px;
+                        border-left: 6px solid #2563eb;
+                        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+                        color: #1e293b;
+                        font-size: 14.5px;
+                        transition: transform 0.2s;
+                    }}
+                    .premium-list li:hover {{ transform: translateX(5px); }}
                     
                     .footer {{
                         text-align: center;
@@ -906,11 +982,11 @@ FORMAT WAJIB
                         <div class="grid-2">
                             <div class="info-card volatility">
                                 <h3>📈 Volatilitas Pasar Harian</h3>
-                                <p>{daily_summary_str.replace(' | ', '<br><br>• ')}</p>
+                                {html_daily}
                             </div>
                             <div class="info-card heatmap">
                                 <h3>🗺️ Sentimen Sektor Riil (YoY)</h3>
-                                <p>{heatmap_summary_str.replace(' | ', '<br><br>• ')}</p>
+                                {html_heatmap}
                             </div>
                         </div>
 
@@ -929,7 +1005,7 @@ FORMAT WAJIB
             </html>
             """
             
-            # 4. Tombol Download HTML
+            # 5. Tombol Download HTML
             st.download_button(
                 label="📥 Download Executive Brief (.html)",
                 data=html_template,
