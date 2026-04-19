@@ -741,12 +741,11 @@ FORMAT WAJIB
             html_policy = html_policy.replace("<h3>", "<h3 class='policy-title'>✨ ")
             html_policy = html_policy.replace("<strong>", "<strong class='highlight-text'>")
             
-            # 3. BEDAH SEMUA DATA BULANAN (Menampilkan Seluruh Indikator Sektor Riil)
+            # 3. BEDAH SEMUA DATA BULANAN (Sektor Riil)
             html_monthly = "<div class='monthly-grid'>"
             for item in re.split(r'\||\n', monthly_summary_str):
                 item_clean = item.strip()
                 if item_clean and "tidak tersedia" not in item_clean.lower():
-                    # Styling dinamis: Beri warna merah jika ada tanda minus, biru jika positif
                     if "-" in item_clean:
                         html_monthly += f"<div class='m-card negative'><div class='m-icon'>🔻</div><div class='m-text'>{item_clean}</div></div>"
                     else:
@@ -763,7 +762,7 @@ FORMAT WAJIB
             html_daily += "</div>"
             if "<div class='ticker-item" not in html_daily: html_daily = "<p>Data Harian tidak tersedia.</p>"
 
-            # 5. TEMPLATE HTML/CSS PREMIUM (MCKINSEY / BCG STYLE)
+            # 5. TEMPLATE HTML/CSS PREMIUM (KOMBINASI BLUE HEADER + GRID)
             html_template = f"""
             <!DOCTYPE html>
             <html lang="id">
@@ -775,7 +774,7 @@ FORMAT WAJIB
                     
                     body {{ 
                         font-family: 'Plus Jakarta Sans', sans-serif; 
-                        background-color: #cbd5e1; /* Warna latar belakang meja abu-abu */
+                        background-color: #cbd5e1; /* Meja abu-abu */
                         color: #334155; 
                         padding: 50px 20px; 
                         line-height: 1.6; 
@@ -787,36 +786,33 @@ FORMAT WAJIB
                         background: #ffffff; 
                         border-radius: 20px; 
                         box-shadow: 0 25px 50px -12px rgba(0,0,0,0.3); 
-                        padding: 60px 70px; 
+                        overflow: hidden; /* Penting agar header biru tidak keluar dari sudut lengkung */
                     }}
                     
-                    /* HEADER STYLE */
-                    .badge-top {{ 
-                        display: inline-block; 
-                        background: #ef4444; 
-                        color: white; 
-                        font-size: 11px; 
-                        font-weight: 800; 
-                        padding: 6px 14px; 
-                        border-radius: 8px; 
-                        letter-spacing: 1.5px; 
-                        margin-bottom: 20px; 
-                        text-transform: uppercase; 
+                    /* KEMBALIKAN HEADER BIRU GRADASI */
+                    .header {{
+                        background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+                        padding: 50px 70px;
+                        color: white;
                     }}
-                    .header-title {{ 
-                        font-size: 42px; 
-                        font-weight: 800; 
-                        color: #0f172a; 
-                        margin: 0 0 10px 0; 
-                        line-height: 1.2; 
-                        letter-spacing: -1px; 
+                    .header h1 {{
+                        font-size: 40px;
+                        font-weight: 800;
+                        margin: 0 0 10px 0;
+                        color: #ffffff;
+                        letter-spacing: -0.5px;
+                        line-height: 1.2;
                     }}
-                    .header-subtitle {{ 
-                        font-size: 18px; 
-                        color: #64748b; 
-                        margin: 0 0 40px 0; 
-                        border-bottom: 2px solid #f1f5f9; 
-                        padding-bottom: 30px; 
+                    .header p {{
+                        font-size: 16px;
+                        color: #94a3b8;
+                        margin: 0;
+                        letter-spacing: 0.5px;
+                    }}
+                    
+                    /* PEMBUNGKUS KONTEN BAWAH */
+                    .content-body {{
+                        padding: 40px 70px 60px 70px;
                     }}
                     
                     /* SECTION TITLE */
@@ -947,35 +943,40 @@ FORMAT WAJIB
             </head>
             <body>
                 <div class="report-container">
-                    <div class="badge-top">Strictly Confidential</div>
-                    <h1 class="header-title">Executive Macroeconomic Brief</h1>
-                    <p class="header-subtitle">Analisis DFM & Sintesis Kebijakan AI Command Center Bappenas RI</p>
-
-                    <div class="section-label"><span>📈</span> Proyeksi Pertumbuhan Ekonomi (DFM)</div>
-                    <div class="chart-wrapper">
-                        {chart_html}
-                    </div>
-
-                    <div class="grid-container">
-                        <div>
-                            <div class="section-label" style="margin-top: 0;"><span>🏢</span> Kinerja Seluruh Sektor Riil</div>
-                            {html_monthly}
-                        </div>
-                        <div>
-                            <div class="section-label" style="margin-top: 0;"><span>⚡</span> Volatilitas Pasar Harian</div>
-                            {html_daily}
-                        </div>
-                    </div>
-
-                    <div class="ai-box">
-                        <div class="section-label" style="margin-top: 0; border:none; padding:0;"><span>🧠</span> Sintesis & Rekomendasi AI</div>
-                        {html_policy}
-                    </div>
                     
-                    <div class="footer">
-                        Dokumen ini dihasilkan secara otomatis menggunakan model AI Global Macro.<br>
-                        Dicetak pada: <strong>{pd.Timestamp.now().strftime('%d %B %Y %H:%M')} WIB</strong>
+                    <div class="header">
+                        <h1>Executive Macroeconomic Brief</h1>
+                        <p>Analisis DFM & Sintesis Kebijakan AI Command Center Bappenas RI</p>
                     </div>
+
+                    <div class="content-body">
+                        <div class="section-label" style="margin-top: 0;"><span>📈</span> Proyeksi Pertumbuhan Ekonomi (DFM)</div>
+                        <div class="chart-wrapper">
+                            {chart_html}
+                        </div>
+
+                        <div class="grid-container">
+                            <div>
+                                <div class="section-label" style="margin-top: 0;"><span>🏢</span> Kinerja Seluruh Sektor Riil</div>
+                                {html_monthly}
+                            </div>
+                            <div>
+                                <div class="section-label" style="margin-top: 0;"><span>⚡</span> Volatilitas Pasar Harian</div>
+                                {html_daily}
+                            </div>
+                        </div>
+
+                        <div class="ai-box">
+                            <div class="section-label" style="margin-top: 0; border:none; padding:0;"><span>🧠</span> Sintesis & Rekomendasi AI</div>
+                            {html_policy}
+                        </div>
+                        
+                        <div class="footer">
+                            Dokumen ini dihasilkan secara otomatis menggunakan model AI Global Macro.<br>
+                            Dicetak pada: <strong>{pd.Timestamp.now().strftime('%d %B %Y %H:%M')} WIB</strong>
+                        </div>
+                    </div>
+
                 </div>
             </body>
             </html>
