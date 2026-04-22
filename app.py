@@ -282,7 +282,9 @@ if df_target is not None:
     real_2026 = [None, None, None, None]
     now_2026 = preds_2026
 
-    # --- CONTROL PANEL MENU MENYAMPING DI ATAS GRAFIK ---
+    # =======================================================
+    # CONTROL PANEL MENU (TOMBOL MENYAMPING)
+    # =======================================================
     st.markdown("<br>", unsafe_allow_html=True)
     selected_view = st.radio(
         "Pilih Rentang Waktu Analisis:",
@@ -346,7 +348,7 @@ if df_target is not None:
     c3.metric("Status Capaian", status, delta_color="normal" if gap >= -0.1 else "inverse")
 
     # =======================================================
-    # SUNTIKAN MAGIC PLOTLY: MUNCULKAN ANGKA & BULLET DI UJUNG (Q4 2025 - 2026)
+    # SUNTIKAN MAGIC PLOTLY: MUNCULKAN ANGKA & BULLET DI UJUNG
     # =======================================================
     for trace in fig.data:
         if getattr(trace, 'name', '') in ['Proyeksi DFM 2026', 'DFM Nowcasting', 'Realisasi (2010-2025)']:
