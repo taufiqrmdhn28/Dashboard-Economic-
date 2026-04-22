@@ -488,7 +488,7 @@ if df_target is not None:
         )
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # ==========================================
+   # ==========================================
     # --- MONITORING DATA HARIAN (DTD & YTD) ---
     # ==========================================
     st.markdown("### 📈 Monitoring Data Harian")
@@ -496,7 +496,7 @@ if df_target is not None:
     # 1. TOMBOL PILIHAN MENU UI (Sesuai Arahan Koor)
     selected_daily_view = st.radio(
         "Pilih Mode Tampilan Pasar:",
-        ["Data Berjalan (Spot & DTD)", "Data Rata-Rata (YTD Avg vs 2025)"],
+        ["Data Berjalan", "Data Rata-Rata"],
         horizontal=True,
         key="daily_view_toggle"
     )
@@ -543,9 +543,8 @@ if df_target is not None:
             
             if avg_prev != 0:
                 avg_growth = ((avg_current - avg_prev) / avg_prev) * 100  # Persen Perubahan (Δ)
-                avg_index = (avg_current / avg_prev) * 100                # Nilai Index (Rasio x 100)
             else:
-                avg_growth = 0; avg_index = 0
+                avg_growth = 0
 
             # --- C. SWITCH TAMPILAN BERDASARKAN TOMBOL ---
             if "Berjalan" in selected_daily_view:
@@ -567,10 +566,13 @@ if df_target is not None:
                 
                 avg_prev_disp = f"{avg_prev:,.2f}" if avg_prev > 10 else f"{avg_prev:.2f}"
                 badge_1_str = f"Avg '25: {avg_prev_disp}"
-                badge_2_str = f"Δ {avg_growth:+.2f}% (Idx: {avg_index:.1f})"
+                
+                # PERBAIKAN: Hapus (Idx: ...) di sini
+                badge_2_str = f"Δ {avg_growth:+.2f}%"
+                
                 subtitle_str = f"Rata-rata YTD {current_year}"
                 
-                # Rekap untuk dibaca AI (Biar analisis AI ikut menyesuaikan!)
+                # Rekap untuk dibaca AI
                 daily_summary_list.append(f"{col}: Avg {current_year} = {disp_val} (Perubahan vs Avg 2025: {avg_growth:+.2f}%)")
 
             # --- D. RENDER KOTAK KACA HTML ---
