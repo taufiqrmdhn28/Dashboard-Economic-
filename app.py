@@ -195,15 +195,24 @@ def run_full_dfm_replication():
         # 2. Kumpulkan Jadwal Rilis (2023 - 2026)
         jobs = []
         seen = set()
+        
+        # a. Tentukan Lasteval: Tanggal persis saat dashboard dibuka
+        hari_ini = pd.Timestamp.today().normalize()
+        
         for vc in vintage_cols:
             col_name = vc.strftime('%Y-%m-%d 00:00:00') if vc.strftime('%Y-%m-%d 00:00:00') in df_cal.columns else df_cal.columns[2 + vintage_cols.index(vc)]
+            
+            # b. Ambil semua jadwal rilis dari kolom Kalender
             release_dates = pd.to_datetime(df_cal[col_name], errors="coerce").dropna().unique()
+            
             for rd in sorted(release_dates):
-                if 2023 <= rd.year <= 2026 and (rd, vc) not in seen:
-                    seen.add((rd, vc)); jobs.append((rd, vc))
+                # c. LOGIKA PENGEREMAN (Sesuai Maksud Min):
+                # Hanya simpan jadwal rilis (rd) yang TANGGALNYA KURANG DARI ATAU SAMA DENGAN HARI INI
+                if 2023 <= rd.year <= 2026 and rd <= hari_ini and (rd, vc) not in seen:
+                    seen.add((rd, vc))
+                    jobs.append((rd, vc)) # Masukkan ke antrean proses MATLAB
+                    
         jobs.sort(key=lambda x: x[0])
-        
-        if not jobs: return pd.DataFrame()
 
         # 3. Eksekusi Iterasi
         results_table = []
