@@ -493,7 +493,15 @@ if df_target is not None:
     # ==========================================
     st.markdown("### 📈 Monitoring Data Harian")
     
-    daily_summary_list = [] # <-- VARIABEL INI WAJIB ADA BIAR AI GAK ERROR
+    # 1. TOMBOL PILIHAN MENU UI (Sesuai Arahan Koor)
+    selected_daily_view = st.radio(
+        "Pilih Mode Tampilan Pasar:",
+        ["Data Berjalan (Spot & DTD)", "Data Rata-Rata (YTD Avg vs 2025)"],
+        horizontal=True,
+        key="daily_view_toggle"
+    )
+    
+    daily_summary_list = [] # <-- WADAH UNTUK AI
     daily_summary_str = "Data harian tidak tersedia."
 
     if 'df_daily' in locals() and df_daily is not None:
@@ -508,41 +516,71 @@ if df_target is not None:
             if valid_series.empty: continue
                 
             latest_row = valid_series.iloc[-1]
-            val = latest_row[col]
+            val = latest_row[col] # Nilai Spot Terakhir
             date_obj = latest_row[date_col_daily]
             date_str = date_obj.strftime("%d %b %Y")
+            current_year = date_obj.year
             
+            # --- A. PERHITUNGAN DATA BERJALAN (LAMA) ---
             if len(valid_series) > 1:
                 prev_row = valid_series.iloc[-2]
                 val_prev = prev_row[col]
                 dtd = ((val - val_prev) / val_prev) * 100 if val_prev != 0 else 0
             else: dtd = 0
                 
-            current_year = date_obj.year
             prev_year_data = valid_series[valid_series[date_col_daily].dt.year == current_year - 1]
-            
             if not prev_year_data.empty:
                 ytd_base_val = prev_year_data.iloc[-1][col]
                 ytd = ((val - ytd_base_val) / ytd_base_val) * 100 if ytd_base_val != 0 else 0
                 ytd_str = f"YTD: {ytd:+.2f}%"
             else:
-                ytd = 0
-                ytd_str = "YTD: -"
-                
-            color_dtd = "badge-red" if dtd < 0 else "badge-green"
-            color_ytd = "badge-red" if ytd < 0 else "badge-green"
-            disp = f"{val:,.2f}" if val > 10 else f"{val:.2f}"
+                ytd = 0; ytd_str = "YTD: -"
             
-            # --- MASUKKAN KE DALAM DAFTAR UNTUK AI ---
-            daily_summary_list.append(f"{col}: {disp} (DTD: {dtd:+.2f}%, {ytd_str})")
+            # --- B. PERHITUNGAN DATA RATA-RATA (BARU - REQUEST KOOR) ---
+            current_year_data = valid_series[valid_series[date_col_daily].dt.year == current_year]
+            avg_current = current_year_data[col].mean() if not current_year_data.empty else val
+            avg_prev = prev_year_data[col].mean() if not prev_year_data.empty else 0
+            
+            if avg_prev != 0:
+                avg_growth = ((avg_current - avg_prev) / avg_prev) * 100  # Persen Perubahan (Δ)
+                avg_index = (avg_current / avg_prev) * 100                # Nilai Index (Rasio x 100)
+            else:
+                avg_growth = 0; avg_index = 0
 
+            # --- C. SWITCH TAMPILAN BERDASARKAN TOMBOL ---
+            if "Berjalan" in selected_daily_view:
+                # TAMPILAN SPOT
+                disp_val = f"{val:,.2f}" if val > 10 else f"{val:.2f}"
+                color_1 = "badge-red" if dtd < 0 else "badge-green"
+                color_2 = "badge-red" if ytd < 0 else "badge-green"
+                badge_1_str = f"DTD: {dtd:+.2f}%"
+                badge_2_str = ytd_str
+                subtitle_str = f"Data Spot: {date_str}"
+                
+                # Rekap untuk dibaca AI
+                daily_summary_list.append(f"{col}: {disp_val} (DTD: {dtd:+.2f}%)")
+            else:
+                # TAMPILAN RATA-RATA (REQUEST KOOR)
+                disp_val = f"{avg_current:,.2f}" if avg_current > 10 else f"{avg_current:.2f}"
+                color_1 = "badge-neutral" # Warna abu-abu elegan untuk info rata-rata 2025
+                color_2 = "badge-red" if avg_growth < 0 else "badge-green"
+                
+                avg_prev_disp = f"{avg_prev:,.2f}" if avg_prev > 10 else f"{avg_prev:.2f}"
+                badge_1_str = f"Avg '25: {avg_prev_disp}"
+                badge_2_str = f"Δ {avg_growth:+.2f}% (Idx: {avg_index:.1f})"
+                subtitle_str = f"Rata-rata YTD {current_year}"
+                
+                # Rekap untuk dibaca AI (Biar analisis AI ikut menyesuaikan!)
+                daily_summary_list.append(f"{col}: Avg {current_year} = {disp_val} (Perubahan vs Avg 2025: {avg_growth:+.2f}%)")
+
+            # --- D. RENDER KOTAK KACA HTML ---
             html = f"""
             <div class="glass-card" style="padding: 15px; margin-bottom: 10px;">
                 <div class="card-title">{col}</div>
-                <div class="card-value">{disp}</div>
-                <div style="font-size: 11px; color: #666; margin-bottom: 8px; font-style: italic;">Data: {date_str}</div>
-                <span class="badge {color_dtd}">DTD: {dtd:+.2f}%</span>
-                <span class="badge {color_ytd}">{ytd_str}</span>
+                <div class="card-value">{disp_val}</div>
+                <div style="font-size: 11px; color: #666; margin-bottom: 8px; font-style: italic;">{subtitle_str}</div>
+                <span class="badge {color_1}">{badge_1_str}</span>
+                <span class="badge {color_2}">{badge_2_str}</span>
             </div>
             """
             with daily_cols[idx % 4]: st.markdown(html, unsafe_allow_html=True)
