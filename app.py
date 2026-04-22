@@ -265,23 +265,15 @@ if df_target is not None:
     
     if not df_full_results.empty:
         preds_2026 = []
-        
-        # LOGIKA SELEKSI: Ambil prediksi NOWCAST terakhir untuk tiap kuartal di 2026
         for q in [1, 2, 3, 4]:
             q_label = f"2026Q{q}"
-            
-            # Filter baris yang membicarakan kuartal target (Reference Quarter)
             df_q_target = df_full_results[df_full_results['Reference Quarter'] == q_label]
-            
             if not df_q_target.empty:
-                # Ambil tanggal prediksi (Day Prediction) yang paling terakhir di kuartal tersebut
-                # Misal: Untuk Q1, ini akan mengambil Nowcast yang diprediksi di akhir Maret
                 latest_prediction = df_q_target.sort_values('Day Prediction').iloc[-1]['Nowcast']
                 preds_2026.append(latest_prediction)
             else:
                 preds_2026.append(np.nan)
         
-        # Bersihkan data (ffill/bfill) jika ada kuartal yang belum memiliki jadwal rilis sama sekali
         s_preds = pd.Series(preds_2026)
         preds_2026 = s_preds.ffill().bfill().fillna(5.2).tolist()
     else:
@@ -290,18 +282,19 @@ if df_target is not None:
     real_2026 = [None, None, None, None]
     now_2026 = preds_2026
 
-    st.sidebar.header("⚙️ Control Panel")
-    selected_view = st.sidebar.selectbox("Pilih Periode Monitoring", ["2025", "2026", "Full Trajectory"])
+    # --- CONTROL PANEL MENU MENYAMPING DI ATAS GRAFIK ---
+    st.markdown("<br>", unsafe_allow_html=True)
+    selected_view = st.radio(
+        "Pilih Rentang Waktu Analisis:",
+        ["2026", "2010 - 2026"],
+        horizontal=True,
+        index=0
+    )
 
     final_x, final_real, final_now, final_target = [], [], [], []
     current_avg, current_target = 0, 0
 
-    if selected_view == "2025":
-        final_x = ['Q1', 'Q2', 'Q3', 'Q4']
-        final_real, final_now, final_target = real_2025, now_2025, [t_2025]*4
-        vals = [v for v in [r if r is not None else n for r, n in zip(real_2025, now_2025)] if v is not None]
-        current_avg, current_target = np.mean(vals) if vals else 0, t_2025
-    elif selected_view == "2026":
+    if selected_view == "2026":
         final_x = ['Q1', 'Q2', 'Q3', 'Q4']
         final_real, final_now, final_target = real_2026, now_2026, [t_2026]*4
         current_avg, current_target = np.mean(now_2026), t_2026
@@ -330,21 +323,18 @@ if df_target is not None:
     # UPDATE JUDUL CHART DFM
     title_text = f"Outlook Ekonomi: {selected_view}"
     if selected_view == "2026": title_text += " (Model: Dynamic Factor MQ)"
-    elif selected_view == "Full Trajectory": title_text = "Historis & Proyeksi Ekonomi (DFM Model)"
+    else: title_text = "Historis & Proyeksi Ekonomi (DFM Model)"
 
     st.markdown(f"### {title_text}")
     fig = go.Figure()
 
-    if selected_view == "Full Trajectory":
+    if selected_view == "2010 - 2026":
         fig.add_trace(go.Scatter(x=full_x_real, y=full_y_real, name='Realisasi (2010-2025)', mode='lines', line=dict(color='#f1c40f', width=2.5)))
         fig.add_trace(go.Scatter(x=full_x_proj, y=full_y_proj, name='Proyeksi DFM 2026', mode='lines', line=dict(color='#27ae60', width=2.5, dash='dot')))
         fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', legend=dict(orientation="h", y=1.1), height=450)
     else:
         fig.add_trace(go.Bar(x=final_x, y=final_real, name='Realisasi (BPS)', marker_color='#2980b9', text=[f"{v:.2f}%" if v else "" for v in final_real], textposition='auto'))
-        if selected_view == "2026":
-            fig.add_trace(go.Scatter(x=final_x, y=final_now, name='DFM Nowcasting', mode='lines+markers', line=dict(color='#f39c12', width=4, shape='spline'), text=[f"{v:.2f}%" for v in final_now], textposition='top center'))
-        else:
-            fig.add_trace(go.Bar(x=final_x, y=final_now, name='Nowcasting', marker_color='#f39c12', text=[f"{v:.2f}%" if v else "" for v in final_now], textposition='auto'))
+        fig.add_trace(go.Scatter(x=final_x, y=final_now, name='DFM Nowcasting', mode='lines+markers', line=dict(color='#f39c12', width=4, shape='spline'), text=[f"{v:.2f}%" for v in final_now], textposition='top center'))
         fig.add_trace(go.Scatter(x=final_x, y=final_target, name='Target APBN', mode='lines', line=dict(color='#c0392b', width=3, dash='dash')))
         fig.update_layout(barmode='group', plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', legend=dict(orientation="h", y=1.1), height=450)
 
@@ -354,6 +344,43 @@ if df_target is not None:
     c2.metric("Realisasi/Proyeksi Avg", f"{current_avg:.2f}%", delta=f"{gap:.2f}%")
     status = "✅ ON TRACK" if gap >= -0.1 else "❌ MELESET / BELOW TARGET"
     c3.metric("Status Capaian", status, delta_color="normal" if gap >= -0.1 else "inverse")
+
+    # =======================================================
+    # SUNTIKAN MAGIC PLOTLY: MUNCULKAN ANGKA & BULLET DI UJUNG (Q4 2025 - 2026)
+    # =======================================================
+    for trace in fig.data:
+        if getattr(trace, 'name', '') in ['Proyeksi DFM 2026', 'DFM Nowcasting', 'Realisasi (2010-2025)']:
+            text_labels = []
+            marker_sizes = []
+            
+            if trace.x is not None and trace.y is not None:
+                for x_val, y_val in zip(trace.x, trace.y):
+                    x_str = str(x_val)
+                    
+                    is_target = False
+                    if selected_view == "2026":
+                        is_target = True 
+                    else:
+                        is_target = ('2026' in x_str) or ('2025-10' in x_str) or ('2025-11' in x_str) or ('2025-12' in x_str) or ('2025-Q4' in x_str) or ('Q4' in x_str and '2025' in x_str)
+                    
+                    if is_target and pd.notna(y_val):
+                        text_labels.append(f"<b>{float(y_val):.2f}%</b>")
+                        marker_sizes.append(10)
+                    else:
+                        text_labels.append("")
+                        marker_sizes.append(0)
+                
+                trace.mode = "lines+markers+text"
+                trace.text = text_labels
+                trace.textposition = "top center"
+                trace.textfont = dict(size=14, color="#0f172a") 
+                
+                if not hasattr(trace, 'marker') or trace.marker is None:
+                    trace.marker = dict()
+                trace.marker.size = marker_sizes
+                trace.marker.symbol = "circle"
+                trace.marker.color = "#2563eb" 
+                trace.marker.line = dict(width=2, color="white") 
 
     st.markdown('<div class="glass-card">', unsafe_allow_html=True)
     st.plotly_chart(fig, use_container_width=True)
