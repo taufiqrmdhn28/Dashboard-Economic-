@@ -265,15 +265,42 @@ if df_target is not None:
     
     if not df_full_results.empty:
         preds_2026 = []
-        for q in [1, 2, 3, 4]:
-            q_label = f"2026Q{q}"
-            df_q_target = df_full_results[df_full_results['Reference Quarter'] == q_label]
-            if not df_q_target.empty:
-                latest_prediction = df_q_target.sort_values('Day Prediction').iloc[-1]['Nowcast']
-                preds_2026.append(latest_prediction)
-            else:
-                preds_2026.append(np.nan)
         
+        # 1. Tentukan "lasteval" (Hari ini / Tanggal rilis data paling update)
+        latest_row = df_full_results.sort_values('Day Prediction').iloc[-1]
+        ref_q_str = latest_row['Reference Quarter'] # Contoh output: '2026Q2'
+        ref_year = int(ref_q_str[:4])
+        ref_q_num = int(ref_q_str[-1])
+        
+        # 2. Petakan horizon proyeksi untuk Q1 - Q4 2026 dari perspektif "lasteval"
+        for target_q in [1, 2, 3, 4]:
+            # Hitung jarak kuartal target dengan kuartal saat ini (lasteval)
+            distance = (2026 - ref_year) * 4 + (target_q - ref_q_num)
+            
+            # Mapping jarak ke terminologi kolom output DFM / MATLAB
+            mapping_kolom = {
+                -1: 'Backcast',
+                0:  'Nowcast',
+                1:  'Forecast',
+                2:  '2-step',
+                3:  '3-step'
+            }
+            
+            nama_kolom = mapping_kolom.get(distance)
+            
+            # Jika kolom yang dituju (misal 'Backcast' untuk Q1) ada di baris lasteval, ambil nilainya!
+            if nama_kolom and nama_kolom in latest_row and pd.notna(latest_row[nama_kolom]):
+                preds_2026.append(float(latest_row[nama_kolom]))
+            else:
+                # Fallback aman: Jika jarak lewat terlalu jauh (misal Q1 ditanya saat sudah di Q4)
+                # Kita ambil hasil Nowcast paling terakhir yang direkam untuk kuartal tersebut
+                fallback_df = df_full_results[df_full_results['Reference Quarter'] == f"2026Q{target_q}"]
+                if not fallback_df.empty:
+                    preds_2026.append(float(fallback_df.sort_values('Day Prediction').iloc[-1]['Nowcast']))
+                else:
+                    preds_2026.append(np.nan)
+        
+        # Bersihkan data (ffill/bfill) jika ada kuartal yang blank
         s_preds = pd.Series(preds_2026)
         preds_2026 = s_preds.ffill().bfill().fillna(5.2).tolist()
     else:
@@ -337,7 +364,7 @@ if df_target is not None:
         c1.metric("Target Acuan", f"{current_target}%")
         gap = current_avg - current_target
         c2.metric("Realisasi/Proyeksi Avg", f"{current_avg:.2f}%", delta=f"{gap:.2f}%")
-        status = "✅ ON TRACK" if gap >= -0.1 else "❌ MELESET / BELOW TARGET"
+        status = "✅ SESUAI TARGET" if gap >= -0.1 else "❌ BELOW TARGET"
         c3.metric("Status Capaian", status, delta_color="normal" if gap >= -0.1 else "inverse")
 
     # =======================================================
