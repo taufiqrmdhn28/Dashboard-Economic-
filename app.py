@@ -427,8 +427,8 @@ if df_target is not None:
                 trace.marker.size = marker_sizes
                 trace.marker.symbol = "circle"
                 trace.marker.color = "#f39c12" # ORANGE (Sesuai garis)
-                trace.marker.line = dict(width=2, color="white")) 
-
+                trace.marker.line = dict(width=2, color="white")
+                
     st.markdown('<div class="glass-card">', unsafe_allow_html=True)
     st.plotly_chart(fig, use_container_width=True)
     
