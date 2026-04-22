@@ -356,77 +356,82 @@ if df_target is not None:
         fig.update_layout(barmode='group', plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', legend=dict(orientation="h", y=1.1), height=450)
 
     # =======================================================
-    # SUNTIKAN MAGIC PLOTLY: MUNCULKAN ANGKA & BULLET DI UJUNG (BEBAS OVERLAP)
+    # SUNTIKAN MAGIC PLOTLY: MUNCULKAN ANGKA & BULLET DI UJUNG (ANTI-DEMPET)
     # =======================================================
     for trace in fig.data:
         trace_name = getattr(trace, 'name', '')
         
-        # 1. TRACE REALISASI (Garis Utama)
+        # 1. TRACE REALISASI (Garis Utama Kuning)
         if trace_name == 'Realisasi (2010-2025)':
-            text_labels, marker_sizes = [], []
+            text_labels, marker_sizes, text_pos = [], [], []
             if trace.x is not None and trace.y is not None:
                 for i, y_val in enumerate(trace.y):
                     # HANYA aktifkan di titik paling terakhir (Q4 2025)
                     if i == len(trace.x) - 1 and pd.notna(y_val): 
-                        text_labels.append(f"<b>  {float(y_val):.2f}%  </b>")
-                        marker_sizes.append(11)
+                        text_labels.append(f"<b>{float(y_val):.2f}%</b>")
+                        marker_sizes.append(10)
+                        text_pos.append("top left") # Taruh di kiri atas biar mundur
                     else:
-                        text_labels.append(""); marker_sizes.append(0)
+                        text_labels.append(""); marker_sizes.append(0); text_pos.append("top center")
                         
                 trace.mode = "lines+markers+text"
                 trace.text = text_labels
-                trace.textposition = "top center"
-                trace.textfont = dict(size=14, color="#0f172a")
+                trace.textposition = text_pos # Masukkan array posisi
+                trace.textfont = dict(size=12, color="#0f172a") # Font disesuaikan
                 
                 if not hasattr(trace, 'marker') or trace.marker is None: trace.marker = dict()
                 trace.marker.size = marker_sizes
                 trace.marker.symbol = "circle"
-                trace.marker.color = "#f1c40f" # KUNING/GOLD (Sesuai garis realisasi)
+                trace.marker.color = "#f1c40f" # KUNING/GOLD
                 trace.marker.line = dict(width=2, color="white")
                 
-        # 2. TRACE PROYEKSI (Garis Putus-putus)
+        # 2. TRACE PROYEKSI (Garis Putus-putus Hijau)
         elif trace_name == 'Proyeksi DFM 2026':
-            text_labels, marker_sizes = [], []
+            text_labels, marker_sizes, text_pos = [], [], []
             if trace.x is not None and trace.y is not None:
+                pos_toggle = False # Saklar untuk selang-seling
                 for x_val, y_val in zip(trace.x, trace.y):
-                    # HANYA aktifkan di tahun 2026 (Skip titik sambung Q4 2025 biar gak numpuk)
+                    # HANYA aktifkan di tahun 2026
                     if '2026' in str(x_val) and pd.notna(y_val):
-                        text_labels.append(f"<b>  {float(y_val):.2f}%  </b>")
-                        marker_sizes.append(11)
+                        text_labels.append(f"<b>{float(y_val):.2f}%</b>")
+                        marker_sizes.append(10)
+                        # Logika Selang-seling: Bawah Kanan -> Atas Kanan -> Bawah Kanan
+                        text_pos.append("top right" if pos_toggle else "bottom right")
+                        pos_toggle = not pos_toggle
                     else:
-                        text_labels.append(""); marker_sizes.append(0)
+                        text_labels.append(""); marker_sizes.append(0); text_pos.append("top center")
                         
                 trace.mode = "lines+markers+text"
                 trace.text = text_labels
-                trace.textposition = "top center"
-                trace.textfont = dict(size=14, color="#0f172a")
+                trace.textposition = text_pos # Masukkan array posisi selang-seling
+                trace.textfont = dict(size=12, color="#0f172a")
                 
                 if not hasattr(trace, 'marker') or trace.marker is None: trace.marker = dict()
                 trace.marker.size = marker_sizes
                 trace.marker.symbol = "circle"
-                trace.marker.color = "#27ae60" # HIJAU (Sesuai garis proyeksi)
+                trace.marker.color = "#27ae60" # HIJAU
                 trace.marker.line = dict(width=2, color="white")
                 
-        # 3. TRACE NOWCASTING PENDEK (Untuk Menu "2026" Saja)
+        # 3. TRACE NOWCASTING PENDEK (Untuk Tampilan Menu "2026" Saja)
         elif trace_name == 'DFM Nowcasting':
             text_labels, marker_sizes = [], []
             if trace.x is not None and trace.y is not None:
                 for y_val in trace.y:
                     if pd.notna(y_val):
-                        text_labels.append(f"<b>  {float(y_val):.2f}%  </b>")
+                        text_labels.append(f"<b>{float(y_val):.2f}%</b>")
                         marker_sizes.append(11)
                     else:
                         text_labels.append(""); marker_sizes.append(0)
                         
                 trace.mode = "lines+markers+text"
                 trace.text = text_labels
-                trace.textposition = "top center"
+                trace.textposition = "top center" # Tampilan 2026 lega, jadi aman di atas semua
                 trace.textfont = dict(size=14, color="#0f172a")
                 
                 if not hasattr(trace, 'marker') or trace.marker is None: trace.marker = dict()
                 trace.marker.size = marker_sizes
                 trace.marker.symbol = "circle"
-                trace.marker.color = "#f39c12" # ORANGE (Sesuai garis)
+                trace.marker.color = "#f39c12" # ORANGE
                 trace.marker.line = dict(width=2, color="white")
                 
     st.markdown('<div class="glass-card">', unsafe_allow_html=True)
