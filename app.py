@@ -845,15 +845,18 @@ if df_target is not None:
         st.markdown(final_policy_text)
     else:
         if st.button("Generate Kebijakan Strategis (AI)"):
-            with st.spinner('ChatGPT sedang mensimulasikan skenario ekonomi dan volatilitas pasar...'):
+            genai.configure(api_key=USER_API_KEY)
+            with st.spinner('AI sedang mensimulasikan skenario ekonomi dan volatilitas pasar...'):
                 try:
-                    from openai import OpenAI
-                    
-                    # Mengambil API Key OpenAI dari file secrets
-                    client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-                    
-                    # Prompt tetap sama persis
-                    prompt = f"""
+                    avail = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+                    model_name = next((m for m in avail if 'flash' in m), avail[0] if avail else None)
+
+                    if not model_name: 
+                        st.error("Gagal mendeteksi model. Cek API Key.")
+                    else:
+                        generation_config = genai.types.GenerationConfig(temperature=0.4, top_p=0.8)
+                        model = genai.GenerativeModel(model_name)
+                        prompt = f"""
 Anda berperan sebagai Perencana Ahli Kebijakan di Bappenas RI. 
 Gaya analisis Anda tajam, melihat *blind-spots*, dan setara dengan analis di *elite hedge fund* internasional.
 
@@ -876,14 +879,14 @@ Sentimen perbaikan/perlambatan (Heatmap bulan terbaru):
 {heatmap_summary_str}
 
 =====================
-VOLATILITAS PASAR HARIAN (YTD & Avg)
+VOLATILITAS PASAR HARIAN (DTD & YTD)
 =====================
 {daily_summary_str}
 
 =====================
 TUGAS ANALISIS & SINTESIS
 =====================
-1. ANALISIS PARADOKS & PERSILANGAN: Kontraskan data jangka pendek (Spot) dengan data rata-rata berjalan (YTD Avg).
+1. ANALISIS PARADOKS & PERSILANGAN: Kontraskan data jangka pendek (DTD/MtM) dengan data jangka panjang (YTD/YoY).
 2. TRANSMISI KEBIJAKAN: Hubungkan secara logis volatilitas pasar harian dengan tekanan/peluang di sektor riil bulanan.
 3. 5 REKOMENDASI KEBIJAKAN INOVATIF:
    - 2 Kebijakan "Quick Win" (Taktis meredam syok jangka pendek).
@@ -897,29 +900,14 @@ FORMAT WAJIB
 - Rasionalisasi Macro: (Penjelasan penyelesaian masalah Sektor Riil & Pasar)
 - Dasar Akademis: [Nomor]. Dasar Teori - Penulis (Tahun) - Link Scholar: https://scholar.google.com/scholar?q=kata+kunci
 """
-                    
-                    # Memanggil ChatGPT (Disarankan gpt-4o-mini karena cepat, murah, dan pintar)
-                    response = client.chat.completions.create(
-                        model="gpt-4o-mini", 
-                        messages=[
-                            {"role": "system", "content": "Anda adalah asisten AI ahli ekonomi makro Bappenas."},
-                            {"role": "user", "content": prompt}
-                        ],
-                        temperature=0.4,
-                        top_p=0.8
-                    )
-                    
-                    final_policy_text = response.choices[0].message.content
-                    
-                    # Simpan ke cache biar abadi
-                    st.session_state.policy_cache[signature] = final_policy_text
-                    with open(CACHE_FILE, "wb") as f: pickle.dump(st.session_state.policy_cache, f)
-                    
-                    st.success("✅ Analisis Selesai (Engine: ChatGPT gpt-4o-mini)")
-                    st.markdown(final_policy_text)
-                    
+                        res = model.generate_content(prompt, generation_config=generation_config)
+                        final_policy_text = res.text
+                        st.session_state.policy_cache[signature] = final_policy_text
+                        with open(CACHE_FILE, "wb") as f: pickle.dump(st.session_state.policy_cache, f)
+                        st.success(f"Analisis Selesai (Engine: {model_name})")
+                        st.markdown(final_policy_text)
                 except Exception as e: 
-                    st.error(f"Error AI OpenAI: {e}")
+                    st.error(f"Error AI: {e}")
 
     # =========================================================
     # FITUR MAGIC: EXPORT KE EXECUTIVE BRIEF (NOTEBOOKLM STYLE)
