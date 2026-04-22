@@ -283,9 +283,11 @@ if df_target is not None:
     now_2026 = preds_2026
 
     # =======================================================
-    # CONTROL PANEL MENU (TOMBOL MENYAMPING)
+    # JURUS UI: MENYIAPKAN WADAH ATAS UNTUK JUDUL & METRIK
     # =======================================================
-    st.markdown("<br>", unsafe_allow_html=True)
+    header_ui = st.container()
+
+    # TOMBOL PILIHAN (Sekarang posisinya ada di bawah Metrik, tepat di atas Grafik)
     selected_view = st.radio(
         "Pilih Rentang Waktu Analisis:",
         ["2026", "2010 - 2026"],
@@ -322,12 +324,25 @@ if df_target is not None:
         full_x_proj, full_y_proj = [x_2025[-1]] + x_2026, [combined_2025[-1]] + preds_2026
         current_avg, current_target = np.mean(preds_2026), t_2026
 
-    # UPDATE JUDUL CHART DFM
+    # =======================================================
+    # MENGISI WADAH ATAS DENGAN JUDUL DAN ANGKA
+    # =======================================================
     title_text = f"Outlook Ekonomi: {selected_view}"
     if selected_view == "2026": title_text += " (Model: Dynamic Factor MQ)"
     else: title_text = "Historis & Proyeksi Ekonomi (DFM Model)"
 
-    st.markdown(f"### {title_text}")
+    with header_ui:
+        st.markdown(f"### {title_text}")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Target Acuan", f"{current_target}%")
+        gap = current_avg - current_target
+        c2.metric("Realisasi/Proyeksi Avg", f"{current_avg:.2f}%", delta=f"{gap:.2f}%")
+        status = "✅ ON TRACK" if gap >= -0.1 else "❌ MELESET / BELOW TARGET"
+        c3.metric("Status Capaian", status, delta_color="normal" if gap >= -0.1 else "inverse")
+
+    # =======================================================
+    # MEMBANGUN GRAFIK DI BAWAH TOMBOL
+    # =======================================================
     fig = go.Figure()
 
     if selected_view == "2010 - 2026":
@@ -340,49 +355,79 @@ if df_target is not None:
         fig.add_trace(go.Scatter(x=final_x, y=final_target, name='Target APBN', mode='lines', line=dict(color='#c0392b', width=3, dash='dash')))
         fig.update_layout(barmode='group', plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', legend=dict(orientation="h", y=1.1), height=450)
 
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Target Acuan", f"{current_target}%")
-    gap = current_avg - current_target
-    c2.metric("Realisasi/Proyeksi Avg", f"{current_avg:.2f}%", delta=f"{gap:.2f}%")
-    status = "✅ ON TRACK" if gap >= -0.1 else "❌ MELESET / BELOW TARGET"
-    c3.metric("Status Capaian", status, delta_color="normal" if gap >= -0.1 else "inverse")
-
     # =======================================================
-    # SUNTIKAN MAGIC PLOTLY: MUNCULKAN ANGKA & BULLET DI UJUNG
+    # SUNTIKAN MAGIC PLOTLY: MUNCULKAN ANGKA & BULLET DI UJUNG (BEBAS OVERLAP)
     # =======================================================
     for trace in fig.data:
-        if getattr(trace, 'name', '') in ['Proyeksi DFM 2026', 'DFM Nowcasting', 'Realisasi (2010-2025)']:
-            text_labels = []
-            marker_sizes = []
-            
+        trace_name = getattr(trace, 'name', '')
+        
+        # 1. TRACE REALISASI (Garis Utama)
+        if trace_name == 'Realisasi (2010-2025)':
+            text_labels, marker_sizes = [], []
             if trace.x is not None and trace.y is not None:
-                for x_val, y_val in zip(trace.x, trace.y):
-                    x_str = str(x_val)
-                    
-                    is_target = False
-                    if selected_view == "2026":
-                        is_target = True 
+                for i, y_val in enumerate(trace.y):
+                    # HANYA aktifkan di titik paling terakhir (Q4 2025)
+                    if i == len(trace.x) - 1 and pd.notna(y_val): 
+                        text_labels.append(f"<b>  {float(y_val):.2f}%  </b>")
+                        marker_sizes.append(11)
                     else:
-                        is_target = ('2026' in x_str) or ('2025-10' in x_str) or ('2025-11' in x_str) or ('2025-12' in x_str) or ('2025-Q4' in x_str) or ('Q4' in x_str and '2025' in x_str)
-                    
-                    if is_target and pd.notna(y_val):
-                        text_labels.append(f"<b>{float(y_val):.2f}%</b>")
-                        marker_sizes.append(10)
-                    else:
-                        text_labels.append("")
-                        marker_sizes.append(0)
-                
+                        text_labels.append(""); marker_sizes.append(0)
+                        
                 trace.mode = "lines+markers+text"
                 trace.text = text_labels
                 trace.textposition = "top center"
-                trace.textfont = dict(size=14, color="#0f172a") 
+                trace.textfont = dict(size=14, color="#0f172a")
                 
-                if not hasattr(trace, 'marker') or trace.marker is None:
-                    trace.marker = dict()
+                if not hasattr(trace, 'marker') or trace.marker is None: trace.marker = dict()
                 trace.marker.size = marker_sizes
                 trace.marker.symbol = "circle"
-                trace.marker.color = "#2563eb" 
-                trace.marker.line = dict(width=2, color="white") 
+                trace.marker.color = "#f1c40f" # KUNING/GOLD (Sesuai garis realisasi)
+                trace.marker.line = dict(width=2, color="white")
+                
+        # 2. TRACE PROYEKSI (Garis Putus-putus)
+        elif trace_name == 'Proyeksi DFM 2026':
+            text_labels, marker_sizes = [], []
+            if trace.x is not None and trace.y is not None:
+                for x_val, y_val in zip(trace.x, trace.y):
+                    # HANYA aktifkan di tahun 2026 (Skip titik sambung Q4 2025 biar gak numpuk)
+                    if '2026' in str(x_val) and pd.notna(y_val):
+                        text_labels.append(f"<b>  {float(y_val):.2f}%  </b>")
+                        marker_sizes.append(11)
+                    else:
+                        text_labels.append(""); marker_sizes.append(0)
+                        
+                trace.mode = "lines+markers+text"
+                trace.text = text_labels
+                trace.textposition = "top center"
+                trace.textfont = dict(size=14, color="#0f172a")
+                
+                if not hasattr(trace, 'marker') or trace.marker is None: trace.marker = dict()
+                trace.marker.size = marker_sizes
+                trace.marker.symbol = "circle"
+                trace.marker.color = "#27ae60" # HIJAU (Sesuai garis proyeksi)
+                trace.marker.line = dict(width=2, color="white")
+                
+        # 3. TRACE NOWCASTING PENDEK (Untuk Menu "2026" Saja)
+        elif trace_name == 'DFM Nowcasting':
+            text_labels, marker_sizes = [], []
+            if trace.x is not None and trace.y is not None:
+                for y_val in trace.y:
+                    if pd.notna(y_val):
+                        text_labels.append(f"<b>  {float(y_val):.2f}%  </b>")
+                        marker_sizes.append(11)
+                    else:
+                        text_labels.append(""); marker_sizes.append(0)
+                        
+                trace.mode = "lines+markers+text"
+                trace.text = text_labels
+                trace.textposition = "top center"
+                trace.textfont = dict(size=14, color="#0f172a")
+                
+                if not hasattr(trace, 'marker') or trace.marker is None: trace.marker = dict()
+                trace.marker.size = marker_sizes
+                trace.marker.symbol = "circle"
+                trace.marker.color = "#f39c12" # ORANGE (Sesuai garis)
+                trace.marker.line = dict(width=2, color="white")) 
 
     st.markdown('<div class="glass-card">', unsafe_allow_html=True)
     st.plotly_chart(fig, use_container_width=True)
