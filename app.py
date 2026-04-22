@@ -703,13 +703,13 @@ if df_target is not None:
         monthly_summary_str = "\n".join(monthly_summary_list)
 
    # ==========================================
-    # --- HEATMAP BULANAN (YOY TRACKER) ---
+    # --- HEATMAP BULANAN (YOY TRACKER & THRESHOLD) ---
     # ==========================================
-    st.markdown("### 🗺️ Heatmap Tracker (Tren YoY)")
+    st.markdown("### 🗺️ Heatmap Tracker (Tren YoY & Threshold Target)")
     st.markdown('<div class="glass-card">', unsafe_allow_html=True)
     df_hm = df_makro[df_makro['Tanggal'] >= '2025-01-01'].copy()
     
-    heatmap_summary_list = [] # <-- WADAH BARU UNTUK REKAP HEATMAP
+    heatmap_summary_list = [] # <-- WADAH UNTUK REKAP HEATMAP AI
     heatmap_summary_str = "Data Heatmap tidak tersedia."
     
     if not df_hm.empty:
@@ -738,6 +738,7 @@ if df_target is not None:
                     col_z.append(0) 
                     col_text.append("-")
                 else:
+                    # Penentuan Text Label (Value / %)
                     if is_level_indicator:
                         txt = f"{val:,.2f}" if val > 1000 else f"{val:.2f}"
                         diff = val - val_prev
@@ -751,21 +752,42 @@ if df_target is not None:
                             diff = yoy_curr - yoy_prev
                         
                     is_green = False
-                    if diff == 0: 
-                        col_z.append(0) 
-                    elif rule_naik_bagus: 
-                        is_green = diff > 0
+                    
+                    # ==========================================
+                    # LOGIKA KHUSUS DARI KOOR (TARGET THRESHOLD)
+                    # ==========================================
+                    is_special_indicator = False
+                    
+                    if "PMI" in col:
+                        is_special_indicator = True
+                        is_green = val >= 50.0
+                    elif "Inflasi" in col:
+                        is_special_indicator = True
+                        is_green = 1.5 <= val <= 3.5
+                    elif "Nilai Tukar" in col:
+                        is_special_indicator = True
+                        is_green = 16500 <= val <= 16900
+                        
+                    # EKSEKUSI WARNA HEATMAP
+                    if is_special_indicator:
                         col_z.append(1 if is_green else -1)
-                    else: 
-                        is_green = diff < 0
-                        col_z.append(1 if is_green else -1)
+                    else:
+                        # Logika Momentum Biasa (Untuk indikator di luar 3 yang spesial)
+                        if diff == 0: 
+                            col_z.append(0) 
+                        elif rule_naik_bagus: 
+                            is_green = diff > 0
+                            col_z.append(1 if is_green else -1)
+                        else: 
+                            is_green = diff < 0
+                            col_z.append(1 if is_green else -1)
                         
                     col_text.append(txt)
                     
-                    # Cuma masukkan bulan terbaru ke AI untuk tau sentimen momentum
+                    # Cuma masukkan bulan terbaru ke AI untuk memicu sentimen yang tepat
                     if d == dates_hm[-1]:
-                        sentimen = "Positif (Hijau)" if is_green else "Negatif (Merah)"
-                        heatmap_summary_list.append(f"{col}: Momentum {sentimen} ({txt})")
+                        sentimen = "Positif/Aman (Hijau)" if is_green else "Negatif/Waspada (Merah)"
+                        heatmap_summary_list.append(f"{col}: Kondisi {sentimen} ({txt})")
             
             z_data.append(col_z)
             text_data.append(col_text)
@@ -787,7 +809,20 @@ if df_target is not None:
             yaxis=dict(autorange="reversed", tickfont=dict(size=12, color='#333', weight='bold')) 
         )
         st.plotly_chart(fig_hm, use_container_width=True)
-        st.markdown("<p style='font-size: 11px; color: #666; text-align: center;'>Keterangan Warna: 🟩 Mengalami Perbaikan Momentum (vs Tahun Lalu) | 🟥 Mengalami Perlambatan Momentum | ⬜ Stagnan / Belum Rilis</p>", unsafe_allow_html=True)
+        
+        # ==========================================
+        # KETERANGAN LEGEND BARU YANG LEBIH ELEGAN
+        # ==========================================
+        st.markdown("""
+        <div style='font-size: 11.5px; color: #475569; background: #f8fafc; padding: 12px 15px; border-radius: 10px; border: 1px solid #cbd5e1; line-height: 1.6;'>
+            <strong>Keterangan Momentum Umum:</strong> 🟩 Mengalami Perbaikan Momentum (vs Tahun Lalu) | 🟥 Mengalami Perlambatan Momentum | ⬜ Stagnan / Belum Rilis <br>
+            <strong>Keterangan Threshold Khusus:</strong> 
+            <span style='background:#dcfce7; color:#166534; padding:2px 6px; border-radius:4px;'>🟩 PMI Manufaktur (≥ 50)</span> | 
+            <span style='background:#dcfce7; color:#166534; padding:2px 6px; border-radius:4px;'>🟩 Inflasi (1.5% - 3.5%)</span> | 
+            <span style='background:#dcfce7; color:#166534; padding:2px 6px; border-radius:4px;'>🟩 Nilai Tukar (Rp 16.500 - 16.900)</span>
+            <br><em>*Khusus 3 indikator di atas, warna merah 🟥 menandakan realisasi keluar dari batas rentang sasaran wajar (Threshold).</em>
+        </div>
+        """, unsafe_allow_html=True)
     else:
         st.info("Belum ada data bulanan untuk ditampilkan.")
     st.markdown('</div>', unsafe_allow_html=True)
