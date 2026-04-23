@@ -869,6 +869,7 @@ if df_target is not None:
                     model_name = "models/gemini-1.5-flash"
                     generation_config = genai.types.GenerationConfig(temperature=0.4, top_p=0.8)
                     model = genai.GenerativeModel(model_name)
+                    
                     prompt = f"""
 Anda adalah Perencana Pembangunan Nasional Ahli Utama di Bappenas RI. 
 Tugas Anda adalah menyusun Catatan Strategis (Executive Summary) yang ditujukan kepada pimpinan kementerian mengenai prospek ekonomi makro dan arahan kebijakan ke depan.
@@ -916,13 +917,20 @@ Bagian Bawah: LAMPIRAN ANALISIS TEKNIS
 - 2. Identifikasi Risiko Transmisi Sektor Riil: (Uraikan jalur transmisi bagaimana volatilitas pasar/global saat ini berpotensi berdampak pada sektor manufaktur, daya beli, atau investasi bulanan).
 """
                     res = model.generate_content(prompt, generation_config=generation_config)
-                    final_policy_text = res.text
-                    st.session_state.policy_cache[signature] = final_policy_text
+                    
+                    # Simpan ke cache
+                    st.session_state.policy_cache[signature] = res.text
                     with open(CACHE_FILE, "wb") as f: pickle.dump(st.session_state.policy_cache, f)
+                    
                     st.success(f"Analisis Selesai (Engine: {model_name})")
-                    st.markdown(final_policy_text)
-            except Exception as e: 
-                st.error(f"Error AI: {e}")
+                    
+                    # Perintah sakti agar halaman otomatis merefresh dan memunculkan kotak Editor
+                    st.rerun()
+                    
+                except Exception as e:
+                    st.error(f"Error AI: {e}")
+
+    st.markdown('</div>', unsafe_allow_html=True)
 
     # =========================================================
     # FITUR MAGIC: EXPORT KE EXECUTIVE BRIEF (NOTEBOOKLM STYLE)
