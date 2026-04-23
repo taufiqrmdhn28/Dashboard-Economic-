@@ -915,14 +915,14 @@ Bagian Bawah: LAMPIRAN ANALISIS TEKNIS
 - 1. Analisis Dinamika Makroekonomi: (Uraikan perbandingan antara data berjalan dengan data rata-rata).
 - 2. Identifikasi Risiko Transmisi Sektor Riil: (Uraikan jalur transmisi bagaimana volatilitas pasar/global saat ini berpotensi berdampak pada sektor manufaktur, daya beli, atau investasi bulanan).
 """
-                        res = model.generate_content(prompt, generation_config=generation_config)
-                        final_policy_text = res.text
-                        st.session_state.policy_cache[signature] = final_policy_text
-                        with open(CACHE_FILE, "wb") as f: pickle.dump(st.session_state.policy_cache, f)
-                        st.success(f"Analisis Selesai (Engine: {model_name})")
-                        st.markdown(final_policy_text)
-                except Exception as e: 
-                    st.error(f"Error AI: {e}")
+                    res = model.generate_content(prompt, generation_config=generation_config)
+                    final_policy_text = res.text
+                    st.session_state.policy_cache[signature] = final_policy_text
+                    with open(CACHE_FILE, "wb") as f: pickle.dump(st.session_state.policy_cache, f)
+                    st.success(f"Analisis Selesai (Engine: {model_name})")
+                    st.markdown(final_policy_text)
+            except Exception as e: 
+                st.error(f"Error AI: {e}")
 
     # =========================================================
     # FITUR MAGIC: EXPORT KE EXECUTIVE BRIEF (NOTEBOOKLM STYLE)
