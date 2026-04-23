@@ -857,8 +857,13 @@ if df_target is not None:
                         generation_config = genai.types.GenerationConfig(temperature=0.4, top_p=0.8)
                         model = genai.GenerativeModel(model_name)
                         prompt = f"""
-Anda berperan sebagai Perencana Ahli Kebijakan di Bappenas RI. 
-Gaya analisis Anda tajam, melihat *blind-spots*, dan setara dengan analis di *elite hedge fund* internasional.
+Anda adalah Perencana Pembangunan Nasional Ahli Utama di Bappenas RI. 
+Tugas Anda adalah menyusun Catatan Strategis (Executive Summary) yang ditujukan kepada pimpinan kementerian mengenai prospek ekonomi makro dan arahan kebijakan ke depan.
+
+=====================
+GAYA BAHASA WAJIB:
+=====================
+Gunakan gaya bahasa resmi, baku, dan teknokratis khas dokumen perencanaan pembangunan nasional (seperti narasi KEM RKP, RPJMN, dan RPJPN). Gunakan terminologi perencanaan yang lugas, terstruktur, dan visioner (misalnya: "Arah Kebijakan", "Strategi Pembangunan", "Transformasi Ekonomi", "Hilirisasi Berkelanjutan", "Ketahanan Fundamental", "Penciptaan Nilai Tambah"). Hindari gaya bahasa pasar modal yang berlebihan, ganti dengan narasi ketahanan dan akselerasi ekonomi struktural.
 
 =====================
 KONDISI PDB & PERTUMBUHAN
@@ -867,38 +872,35 @@ Fokus Indikator: {selected_view}
 Rata-rata Proyeksi DFM saat ini: {current_avg:.2f}% (Target APBN: {current_target}%)
 
 =====================
-DINAMIKA SEKTOR RIIL BULANAN (MtM & YoY)
+DINAMIKA SEKTOR RIIL & MOMENTUM (Berdasarkan Data BPS & BI Terkini)
 =====================
-Berikut rincian kinerja indikator makro bulanan terakhir:
-{monthly_summary_str}
+Ringkasan Bulanan: {monthly_summary_str}
+Status Heatmap (Momentum/Threshold): {heatmap_summary_str}
 
 =====================
-MOMENTUM BULANAN (HEATMAP YOY)
-=====================
-Sentimen perbaikan/perlambatan (Heatmap bulan terbaru):
-{heatmap_summary_str}
-
-=====================
-VOLATILITAS PASAR HARIAN (DTD & YTD)
+VOLATILITAS INDIKATOR HARIAN
 =====================
 {daily_summary_str}
 
 =====================
-TUGAS ANALISIS & SINTESIS
+STRUKTUR OUTPUT DOKUMEN:
 =====================
-1. ANALISIS PARADOKS & PERSILANGAN: Kontraskan data jangka pendek (DTD/MtM) dengan data jangka panjang (YTD/YoY).
-2. TRANSMISI KEBIJAKAN: Hubungkan secara logis volatilitas pasar harian dengan tekanan/peluang di sektor riil bulanan.
-3. 5 REKOMENDASI KEBIJAKAN INOVATIF:
-   - 2 Kebijakan "Quick Win" (Taktis meredam syok jangka pendek).
-   - 2 Kebijakan Reformasi Struktural (Fokus efisiensi/industrialisasi sektor).
-   - 1 Kebijakan Unorthodox / Out-of-the-box (Solusi radikal pendobrak kebiasaan).
+Bagian Utama: ARAH KEBIJAKAN DAN STRATEGI PEMBANGUNAN
+Sajikan 5 Rekomendasi Kebijakan dengan format perencanaan pembangunan:
+- Nama Arah Kebijakan: (Tegas, berorientasi solusi, bernada RKP/RPJMN)
+- Rasionalisasi Strategi: (Penjelasan teknokratis mengapa kebijakan ini krusial untuk mengejar target {current_target}%, dikaitkan dengan realisasi indikator makro saat ini).
+- Referensi Akademis: [Nomor]. Dasar Teori - Penulis (Tahun) - Link Scholar: https://scholar.google.com/scholar?q=kata+kunci
 
-=====================
-FORMAT WAJIB
-=====================
-- Nama Kebijakan: (Actionable dan Tegas)
-- Rasionalisasi Macro: (Penjelasan penyelesaian masalah Sektor Riil & Pasar)
-- Dasar Akademis: [Nomor]. Dasar Teori - Penulis (Tahun) - Link Scholar: https://scholar.google.com/scholar?q=kata+kunci
+*Komposisi Kebijakan:*
+- 2 Kebijakan Stabilisasi Jangka Pendek (Respons taktis terhadap dinamika nilai tukar/inflasi/PMI).
+- 2 Kebijakan Transformasi Struktural (Fokus pada industrialisasi, hilirisasi, dan penguatan rantai pasok domestik).
+- 1 Kebijakan Terobosan (Langkah afirmatif/inovatif pembiayaan atau efisiensi makro).
+
+---
+Bagian Bawah: LAMPIRAN ANALISIS TEKNIS
+(Buat pemisah visual, lalu berikan 2 analisis teknis singkat namun mendalam)
+- 1. Analisis Silang Dinamika Makroekonomi: (Uraikan perbandingan antara gejolak data spot harian dengan ketahanan data rata-rata YTD).
+- 2. Identifikasi Risiko Transmisi Sektor Riil: (Uraikan jalur transmisi bagaimana volatilitas pasar/global saat ini berpotensi merembes ke sektor manufaktur, daya beli, atau investasi bulanan).
 """
                         res = model.generate_content(prompt, generation_config=generation_config)
                         final_policy_text = res.text
