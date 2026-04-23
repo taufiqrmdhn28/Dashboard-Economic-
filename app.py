@@ -836,14 +836,10 @@ if df_target is not None:
     signature = make_signature(selected_view, current_avg, current_target, monthly_summary_str, daily_summary_str)
     editor_key = f"editor_{signature}"
     
-    # Variabel penampung teks untuk dimasukkan ke laporan
-    final_policy_text = ""
-
     # Cek apakah sudah ada cache dari AI
     if signature in st.session_state.policy_cache:
         st.success("✅ Menggunakan hasil kebijakan sebelumnya (Data Harian & Makro belum berubah)")
         
-        # [BAGIAN EDITABLE] 
         # Jika baru pertama masuk dari cache, setel nilai awal editor
         if editor_key not in st.session_state:
             st.session_state[editor_key] = st.session_state.policy_cache[signature]
@@ -865,21 +861,14 @@ if df_target is not None:
             genai.configure(api_key=USER_API_KEY)
             with st.spinner('AI sedang mensimulasikan skenario ekonomi dan volatilitas pasar...'):
                 try:
-                    # KODE PINTAR: Mencari otomatis nama resmi 1.5 Flash dari server Google
+                    # Coba cari model Pro atau Flash
                     avail = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-                    
-                    # Cari yang ada unsur '1.5-flash'
-                    model_name = next((m for m in avail if '1.5-flash' in m), None)
-                    
-                    # Kalau entah kenapa 1.5 gak ada, cari model 'flash' apa saja sebagai cadangan
-                    if not model_name:
+                    model_name = next((m for m in avail if '1.5-pro' in m), None)
+                    if not model_name: 
                         model_name = next((m for m in avail if 'flash' in m), avail[0] if avail else None)
 
-                    if not model_name:
-                        st.error("Gagal mendeteksi model. Cek API Key.")
-                    else:
-                        generation_config = genai.types.GenerationConfig(temperature=0.4, top_p=0.8)
-                        model = genai.GenerativeModel(model_name)
+                    generation_config = genai.types.GenerationConfig(temperature=0.4, top_p=0.8)
+                    model = genai.GenerativeModel(model_name)
                     
                     prompt = f"""
 Anda adalah Perencana Pembangunan Nasional Ahli Utama di Bappenas RI. 
@@ -928,18 +917,49 @@ Bagian Bawah: LAMPIRAN ANALISIS TEKNIS
 - 2. Identifikasi Risiko Transmisi Sektor Riil: (Uraikan jalur transmisi bagaimana volatilitas pasar/global saat ini berpotensi berdampak pada sektor manufaktur, daya beli, atau investasi bulanan).
 """
                     res = model.generate_content(prompt, generation_config=generation_config)
-                    
-                    # Simpan ke cache
-                    st.session_state.policy_cache[signature] = res.text
-                    with open(CACHE_FILE, "wb") as f: pickle.dump(st.session_state.policy_cache, f)
-                    
-                    st.success(f"Analisis Selesai (Engine: {model_name})")
-                    
-                    # Perintah sakti agar halaman otomatis merefresh dan memunculkan kotak Editor
-                    st.rerun()
+                    final_text = res.text
+                    engine_used = model_name
                     
                 except Exception as e:
-                    st.error(f"Error AI: {e}")
+                    # JIKA LIMIT HABIS, OTOMATIS KELUARKAN TEKS SIMULASI AGAR APLIKASI TIDAK ERROR!
+                    error_msg = str(e)
+                    if "429" in error_msg or "Quota" in error_msg:
+                        st.warning("⚠️ Kuota API Google harian Anda habis. Sistem menggunakan 'Mode Simulasi Offline' agar Anda tetap bisa menguji fitur Editor Laporan.")
+                        engine_used = "Simulasi Offline (Dummy Bappenas)"
+                        final_text = f"""
+### ARAH KEBIJAKAN DAN STRATEGI PEMBANGUNAN
+
+- **Arah Kebijakan:** Stabilisasi Nilai Tukar dan Ketahanan Eksternal
+- **Strategi Kebijakan dan Mekanisme Kebijakan:** Mengakselerasi implementasi *Local Currency Settlement* (LCS) dan memperkuat tata kelola devisa hasil ekspor untuk menjaga ekuilibrium Rupiah sesuai target RKP. Hal ini krusial untuk menjaga stabilitas daya beli di tengah volatilitas global.
+- **Referensi Akademis:** [1]. Stabilitas Makroekonomi dan Nilai Tukar - Warjiyo (2020) - Link Scholar: https://scholar.google.com/scholar?q=stabilitas+nilai+tukar
+
+- **Arah Kebijakan:** Akselerasi Hilirisasi Inklusif dan Berkelanjutan
+- **Strategi Kebijakan dan Mekanisme Kebijakan:** Memperluas cakupan hilirisasi ke sektor agroindustri dan mineral kritis dengan memastikan transfer teknologi dan pelibatan tenaga kerja lokal. Ini esensial untuk mendongkrak PDB sebesar {current_avg:.2f}% dan menjaga ketahanan fundamental.
+- **Referensi Akademis:** [2]. Transformasi Ekonomi dan Industrialisasi - Basri (2022) - Link Scholar: https://scholar.google.com/scholar?q=transformasi+ekonomi+hilirisasi
+
+---
+### LAMPIRAN ANALISIS TEKNIS
+
+**1. Analisis Dinamika Makroekonomi:**
+Berdasarkan data berjalan, volatilitas di pasar komoditas menunjukkan tekanan jangka pendek. Namun, data rata-rata secara YTD menunjukkan ketahanan fundamental ekonomi domestik yang masih solid.
+
+**2. Identifikasi Risiko Transmisi Sektor Riil:**
+Terdapat risiko transmisi dari pelemahan kurs dan kenaikan biaya logistik global yang berpotensi menekan margin sektor manufaktur. Perlu mitigasi agar tidak berdampak pada penyerapan tenaga kerja.
+"""
+                    else:
+                        st.error(f"Error Sistem: {error_msg}")
+                        st.stop()
+
+                # Simpan ke cache
+                st.session_state.policy_cache[signature] = final_text
+                with open(CACHE_FILE, "wb") as f: pickle.dump(st.session_state.policy_cache, f)
+                
+                # Masukkan ke Editor
+                st.session_state[editor_key] = final_text
+                st.success(f"✅ Analisis Selesai (Engine: {engine_used})")
+                
+                # Perintah sakti agar otomatis memunculkan kotak Editor
+                st.rerun()
 
     st.markdown('</div>', unsafe_allow_html=True)
 
