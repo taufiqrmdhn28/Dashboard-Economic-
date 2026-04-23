@@ -834,6 +834,7 @@ if df_target is not None:
     st.markdown('<div class="glass-card">', unsafe_allow_html=True)
 
     signature = make_signature(selected_view, current_avg, current_target, monthly_summary_str, daily_summary_str)
+    editor_key = f"editor_{signature}"
     
     # Variabel penampung teks untuk dimasukkan ke laporan
     final_policy_text = ""
@@ -841,8 +842,24 @@ if df_target is not None:
     # Cek apakah sudah ada cache dari AI
     if signature in st.session_state.policy_cache:
         st.success("✅ Menggunakan hasil kebijakan sebelumnya (Data Harian & Makro belum berubah)")
-        final_policy_text = st.session_state.policy_cache[signature]
-        st.markdown(final_policy_text)
+        
+        # [BAGIAN EDITABLE] 
+        # Jika baru pertama masuk dari cache, setel nilai awal editor
+        if editor_key not in st.session_state:
+            st.session_state[editor_key] = st.session_state.policy_cache[signature]
+            
+        # Tampilkan Kotak Teks yang bisa diedit
+        final_policy_text = st.text_area(
+            "✍️ Editor Laporan Strategis (Silakan edit sebelum difinalisasi):",
+            value=st.session_state[editor_key],
+            height=450,
+            key=editor_key
+        )
+        
+        # Pratinjau Tampilan Teks
+        with st.expander("🔍 Pratinjau Tampilan Dokumen Final", expanded=False):
+            st.markdown(final_policy_text)
+
     else:
         if st.button("Generate Kebijakan Strategis (AI)"):
             genai.configure(api_key=USER_API_KEY)
