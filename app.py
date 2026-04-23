@@ -865,14 +865,10 @@ if df_target is not None:
             genai.configure(api_key=USER_API_KEY)
             with st.spinner('AI sedang mensimulasikan skenario ekonomi dan volatilitas pasar...'):
                 try:
-                    avail = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-                    model_name = next((m for m in avail if 'flash' in m), avail[0] if avail else None)
-
-                    if not model_name: 
-                        st.error("Gagal mendeteksi model. Cek API Key.")
-                    else:
-                        generation_config = genai.types.GenerationConfig(temperature=0.4, top_p=0.8)
-                        model = genai.GenerativeModel(model_name)
+                    # Kunci manual ke model 1.5 Flash yang kuotanya melimpah (1500/hari)
+                    model_name = "models/gemini-1.5-flash"
+                    generation_config = genai.types.GenerationConfig(temperature=0.4, top_p=0.8)
+                    model = genai.GenerativeModel(model_name)
                         prompt = f"""
 Anda adalah Perencana Pembangunan Nasional Ahli Utama di Bappenas RI. 
 Tugas Anda adalah menyusun Catatan Strategis (Executive Summary) yang ditujukan kepada pimpinan kementerian mengenai prospek ekonomi makro dan arahan kebijakan ke depan.
