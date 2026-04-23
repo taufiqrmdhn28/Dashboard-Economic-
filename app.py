@@ -866,7 +866,7 @@ if df_target is not None:
             with st.spinner('AI sedang mensimulasikan skenario ekonomi dan volatilitas pasar...'):
                 try:
                     # Kunci manual ke model 1.5 Flash yang kuotanya melimpah (1500/hari)
-                    model_name = "models/gemini-1.5-flash"
+                    model_name = "gemini-1.5-flash"
                     generation_config = genai.types.GenerationConfig(temperature=0.4, top_p=0.8)
                     model = genai.GenerativeModel(model_name)
                     
