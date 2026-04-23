@@ -836,6 +836,9 @@ if df_target is not None:
     signature = make_signature(selected_view, current_avg, current_target, monthly_summary_str, daily_summary_str)
     editor_key = f"editor_{signature}"
     
+    # 👇 INI DIA OBAT ERROR-NYA MIN! 👇
+    final_policy_text = ""
+
     # Cek apakah sudah ada cache dari AI
     if signature in st.session_state.policy_cache:
         st.success("✅ Menggunakan hasil kebijakan sebelumnya (Data Harian & Makro belum berubah)")
