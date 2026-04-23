@@ -869,7 +869,7 @@ if df_target is not None:
                     model_name = "models/gemini-1.5-flash"
                     generation_config = genai.types.GenerationConfig(temperature=0.4, top_p=0.8)
                     model = genai.GenerativeModel(model_name)
-                        prompt = f"""
+                    prompt = f"""
 Anda adalah Perencana Pembangunan Nasional Ahli Utama di Bappenas RI. 
 Tugas Anda adalah menyusun Catatan Strategis (Executive Summary) yang ditujukan kepada pimpinan kementerian mengenai prospek ekonomi makro dan arahan kebijakan ke depan.
 
