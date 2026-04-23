@@ -887,20 +887,20 @@ STRUKTUR OUTPUT DOKUMEN:
 =====================
 Bagian Utama: ARAH KEBIJAKAN DAN STRATEGI PEMBANGUNAN
 Sajikan 5 Rekomendasi Kebijakan dengan format perencanaan pembangunan:
-- Nama Arah Kebijakan: (Tegas, berorientasi solusi, bernada RKP/RPJMN)
-- Rasionalisasi Strategi: (Penjelasan teknokratis mengapa kebijakan ini krusial untuk mengejar target {current_target}%, dikaitkan dengan realisasi indikator makro saat ini).
+- Arah Kebijakan: (Tegas, berorientasi solusi, bernada RKP/RPJMN)
+- Strategi Kebijakan dan Mekanisme Kebijakan: (Penjelasan teknokratis mengapa kebijakan ini krusial untuk mengejar target {current_target}%, dikaitkan dengan realisasi indikator makro saat ini).
 - Referensi Akademis: [Nomor]. Dasar Teori - Penulis (Tahun) - Link Scholar: https://scholar.google.com/scholar?q=kata+kunci
 
 *Komposisi Kebijakan:*
-- 2 Kebijakan Stabilisasi Jangka Pendek (Respons taktis terhadap dinamika nilai tukar/inflasi/PMI).
-- 2 Kebijakan Transformasi Struktural (Fokus pada industrialisasi, hilirisasi, dan penguatan rantai pasok domestik).
-- 1 Kebijakan Terobosan (Langkah afirmatif/inovatif pembiayaan atau efisiensi makro).
+- 2 Kebijakan Stabilisasi Jangka Pendek.
+- 2 Kebijakan Transformasi Struktural.
+- 1 Kebijakan Terobosan yang Inovatif.
 
 ---
 Bagian Bawah: LAMPIRAN ANALISIS TEKNIS
 (Buat pemisah visual, lalu berikan 2 analisis teknis singkat namun mendalam)
-- 1. Analisis Silang Dinamika Makroekonomi: (Uraikan perbandingan antara gejolak data spot harian dengan ketahanan data rata-rata YTD).
-- 2. Identifikasi Risiko Transmisi Sektor Riil: (Uraikan jalur transmisi bagaimana volatilitas pasar/global saat ini berpotensi merembes ke sektor manufaktur, daya beli, atau investasi bulanan).
+- 1. Analisis Dinamika Makroekonomi: (Uraikan perbandingan antara data berjalan dengan data rata-rata).
+- 2. Identifikasi Risiko Transmisi Sektor Riil: (Uraikan jalur transmisi bagaimana volatilitas pasar/global saat ini berpotensi berdampak pada sektor manufaktur, daya beli, atau investasi bulanan).
 """
                         res = model.generate_content(prompt, generation_config=generation_config)
                         final_policy_text = res.text
@@ -964,7 +964,7 @@ Bagian Bawah: LAMPIRAN ANALISIS TEKNIS
             <html lang="id">
             <head>
                 <meta charset="UTF-8">
-                <title>Executive Brief: Macroeconomic Update RI</title>
+                <title>Brief: Macroeconomic Update RI</title>
                 <style>
                     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;800&display=swap');
                     
@@ -1063,7 +1063,7 @@ Bagian Bawah: LAMPIRAN ANALISIS TEKNIS
                     .badge-blue {{ background: #dbeafe; color: #1e40af; padding: 4px 8px; border-radius: 6px; font-weight: 800; font-size: 11px; flex-shrink: 0; }}
                     .badge-red {{ background: #fee2e2; color: #991b1b; padding: 4px 8px; border-radius: 6px; font-weight: 800; font-size: 11px; flex-shrink: 0; }}
                     
-                    /* REKOMENDASI AI */
+                    /* REKOMENDASI KEBIJAKAN */
                     .ai-box {{ 
                         background: linear-gradient(145deg, #f8fafc, #eff6ff); 
                         border: 1px solid #bfdbfe; 
@@ -1115,8 +1115,8 @@ Bagian Bawah: LAMPIRAN ANALISIS TEKNIS
                 <div class="report-container">
                     
                     <div class="header">
-                        <h1>Executive Macroeconomic Brief</h1>
-                        <p>Analisis DFM & Sintesis Kebijakan AI Command Center Bappenas RI</p>
+                        <h1>Macroeconomic Brief</h1>
+                        <p>Analisis Perkembangan Ekonomi Makro Bappenas RI</p>
                     </div>
 
                     <div class="content-body">
@@ -1132,12 +1132,12 @@ Bagian Bawah: LAMPIRAN ANALISIS TEKNIS
                         {html_daily}
 
                         <div class="ai-box">
-                            <div class="section-label" style="margin-top: 0; border:none; padding:0;"><span>🧠</span> Sintesis & Rekomendasi AI</div>
+                            <div class="section-label" style="margin-top: 0; border:none; padding:0;"><span>🧠</span> Rekomendasi Kebijakan</div>
                             {html_policy}
                         </div>
                         
                         <div class="footer">
-                            Dokumen ini dihasilkan secara otomatis menggunakan model AI Global Macro.<br>
+                            Dokumen ini dihasilkan oleh model AI.<br>
                             Dicetak pada: <strong>{pd.Timestamp.now().strftime('%d %B %Y %H:%M')} WIB</strong>
                         </div>
                     </div>
@@ -1149,9 +1149,9 @@ Bagian Bawah: LAMPIRAN ANALISIS TEKNIS
             
             # 6. Tombol Download HTML
             st.download_button(
-                label="📥 Download Laporan Eksekutif Premium (.html)",
+                label="📥 Download Laporan Eksekutif (.html)",
                 data=html_template,
-                file_name="Executive_Brief_Bappenas.html",
+                file_name="Laporan_Brief_Bappenas.html",
                 mime="text/html",
                 type="primary"
             )
