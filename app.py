@@ -963,30 +963,30 @@ Bagian Bawah: LAMPIRAN ANALISIS TEKNIS
             # Buat duplikat grafik agar tampilan asli di web tidak ikut berubah
             fig_export = copy.deepcopy(fig) if 'fig' in locals() else go.Figure()
             
-            # Memaksa label angka nempel LURUS secara vertikal (Center) di titiknya
+            # Memaksa label angka agar rapi dan tidak saling tabrak
             for trace in fig_export.data:
                 if trace.name and "Proyeksi" in trace.name:
                     jml_titik = len(trace.x) if trace.x is not None else len(trace.y)
                     
-                    # POLA PROYEKSI: Dimulai dari BAWAH dulu, baru Atas, Bawah, Atas
-                    # Ini memastikan titik pertama proyeksi tidak menabrak titik terakhir realisasi
+                    # POLA PROYEKSI: Dimulai dari Bawah, lalu Atas, selang-seling (Tengah lurus)
                     pola_posisi = ['bottom center', 'top center'] * (jml_titik // 2 + 1)
                     trace.textposition = pola_posisi[:jml_titik]
-                    
-                    # Font dikecilkan ke 9 agar muat, tebal (bold), warna hijau tua
                     trace.textfont = dict(size=9, color='#065f46', weight='bold')
                     
                 elif trace.name and "Realisasi" in trace.name:
                     jml_titik = len(trace.x) if trace.x is not None else len(trace.y)
-                    
-                    # POLA REALISASI: Semuanya murni di ATAS (Sesuai request Min, 5.39% tetap di atas)
                     pola_posisi = ['top center'] * jml_titik
-                    trace.textposition = pola_posisi
                     
-                    # Font dikecilkan ke 9, tebal (bold), warna cokelat
+                    if jml_titik > 0:
+                        # 🔥 INI KUNCINYA MIN 🔥
+                        # Titik terakhir (5.39%) kita paksa minggir ke "KIRI ATAS" (top left)
+                        # Biar nggak diseruduk sama angka Proyeksi Q2 2026
+                        pola_posisi[-1] = 'top left'
+                        
+                    trace.textposition = pola_posisi
                     trace.textfont = dict(size=9, color='#92400e', weight='bold')
 
-            # Beri margin kanan (r=80) lebih lebar agar angka proyeksi terakhir tidak kepotong layar
+            # Beri margin kanan (r=80) agar aman
             fig_export.update_layout(margin=dict(t=60, b=60, l=30, r=80))
             
             # Konversi grafik yang sudah dirapikan ke HTML
