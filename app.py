@@ -968,8 +968,9 @@ Bagian Bawah: LAMPIRAN ANALISIS TEKNIS
                 if trace.name and "Proyeksi" in trace.name:
                     jml_titik = len(trace.x) if trace.x is not None else len(trace.y)
                     
-                    # POLA TEGAS: Murni Atas-Tengah dan Bawah-Tengah (Tidak ada geser Kanan/Kiri)
-                    pola_posisi = ['top center', 'bottom center'] * (jml_titik // 2 + 1)
+                    # POLA PROYEKSI: Dimulai dari BAWAH dulu, baru Atas, Bawah, Atas
+                    # Ini memastikan titik pertama proyeksi tidak menabrak titik terakhir realisasi
+                    pola_posisi = ['bottom center', 'top center'] * (jml_titik // 2 + 1)
                     trace.textposition = pola_posisi[:jml_titik]
                     
                     # Font dikecilkan ke 9 agar muat, tebal (bold), warna hijau tua
@@ -977,13 +978,9 @@ Bagian Bawah: LAMPIRAN ANALISIS TEKNIS
                     
                 elif trace.name and "Realisasi" in trace.name:
                     jml_titik = len(trace.x) if trace.x is not None else len(trace.y)
-                    pola_posisi = ['top center'] * jml_titik
                     
-                    if jml_titik > 0:
-                        # Titik terakhir realisasi dipaksa ke 'bottom center' lurus ke bawah
-                        # agar tidak nabrak angka proyeksi pertama yang ada di 'top center'
-                        pola_posisi[-1] = 'bottom center'
-                        
+                    # POLA REALISASI: Semuanya murni di ATAS (Sesuai request Min, 5.39% tetap di atas)
+                    pola_posisi = ['top center'] * jml_titik
                     trace.textposition = pola_posisi
                     
                     # Font dikecilkan ke 9, tebal (bold), warna cokelat
