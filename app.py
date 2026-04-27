@@ -963,21 +963,32 @@ Bagian Bawah: LAMPIRAN ANALISIS TEKNIS
             # Buat duplikat grafik agar tampilan asli di web tidak ikut berubah
             fig_export = copy.deepcopy(fig) if 'fig' in locals() else go.Figure()
             
-            # Memaksa label angka pada garis Proyeksi agar posisinya selang-seling khusus untuk HTML
+            # Memaksa label angka agar nempel lurus di titik (atas/bawah) dan ukurannya diperkecil
             for trace in fig_export.data:
                 if trace.name and "Proyeksi" in trace.name:
                     jml_titik = len(trace.x) if trace.x is not None else len(trace.y)
-                    pola_posisi = ['top center', 'bottom center', 'top right', 'bottom right'] * (jml_titik // 4 + 2)
+                    
+                    # POLA BARU: Murni selang-seling atas & bawah agar sejajar persis dengan titiknya
+                    pola_posisi = ['top center', 'bottom center'] * (jml_titik // 2 + 1)
                     trace.textposition = pola_posisi[:jml_titik]
-                    trace.textfont = dict(size=11, color='#0f172a', weight='bold')
+                    
+                    # UKURAN FONT DIKECILKAN: Jadi size 10 (sebelumnya bawaan bisa 12-14)
+                    trace.textfont = dict(size=10, color='#0f172a', weight='bold')
+                    
                 elif trace.name and "Realisasi" in trace.name:
                     jml_titik = len(trace.x) if trace.x is not None else len(trace.y)
                     pola_posisi = ['top center'] * jml_titik
+                    
                     if jml_titik > 0:
+                        # Titik terakhir realisasi dipaksa ke 'bottom left' agar aman dari proyeksi Q1
                         pola_posisi[-1] = 'bottom left'
+                        
                     trace.textposition = pola_posisi
+                    # Font realisasi juga dikecilkan agar seragam
+                    trace.textfont = dict(size=10, color='#854d0e', weight='bold')
 
-            fig_export.update_layout(margin=dict(t=50, b=50, l=30, r=60))
+            # Beri ruang (margin) ekstra di atas dan bawah agar angka tidak terpotong garis tepi
+            fig_export.update_layout(margin=dict(t=60, b=60, l=30, r=60))
             
             # Konversi grafik yang sudah dirapikan ke HTML
             chart_html = fig_export.to_html(full_html=False, include_plotlyjs='cdn', default_height='450px')
