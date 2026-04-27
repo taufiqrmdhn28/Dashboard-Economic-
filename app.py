@@ -766,7 +766,7 @@ if df_target is not None:
                         is_green = 1.5 <= val <= 3.5
                     elif "Nilai Tukar" in col:
                         is_special_indicator = True
-                        is_green = 16500 <= val <= 16900
+                        is_green = val <= 16900
                         
                     # EKSEKUSI WARNA HEATMAP
                     if is_special_indicator:
@@ -819,7 +819,7 @@ if df_target is not None:
             <strong>Keterangan Threshold Khusus:</strong> 
             <span style='background:#dcfce7; color:#166534; padding:2px 6px; border-radius:4px;'>🟩 PMI Manufaktur (≥ 50)</span> | 
             <span style='background:#dcfce7; color:#166534; padding:2px 6px; border-radius:4px;'>🟩 Inflasi (1.5% - 3.5%)</span> | 
-            <span style='background:#dcfce7; color:#166534; padding:2px 6px; border-radius:4px;'>🟩 Nilai Tukar (Rp 16.500 - 16.900)</span>
+            <span style='background:#dcfce7; color:#166534; padding:2px 6px; border-radius:4px;'>🟩 Nilai Tukar (< 16.900)</span>
             <br><em>*Khusus 3 indikator di atas, warna merah 🟥 menandakan realisasi keluar dari batas rentang sasaran wajar (Threshold).</em>
         </div>
         """, unsafe_allow_html=True)
@@ -827,27 +827,33 @@ if df_target is not None:
         st.info("Belum ada data bulanan untuk ditampilkan.")
     st.markdown('</div>', unsafe_allow_html=True)
     
-    # ==========================================
-    # --- AI ADVISOR & NOTEBOOKLM EXPORT ---
+   # ==========================================
+    # --- AI ADVISOR & EDITOR (DRAF EDITABLE) ---
     # ==========================================
     st.markdown("### 🧠 AI Policy Generator")
     st.markdown('<div class="glass-card">', unsafe_allow_html=True)
 
     signature = make_signature(selected_view, current_avg, current_target, monthly_summary_str, daily_summary_str)
+    editor_key = f"editor_{signature}"
     
-    # Variabel penampung teks untuk dimasukkan ke laporan
+    # Inisialisasi awal variabel agar tidak error
     final_policy_text = ""
 
-    # Cek apakah sudah ada cache dari AI
+    # 1. LOGIKA CACHE & INISIALISASI EDITOR
     if signature in st.session_state.policy_cache:
-        st.success("✅ Menggunakan hasil kebijakan sebelumnya (Data Harian & Makro belum berubah)")
-        final_policy_text = st.session_state.policy_cache[signature]
-        st.markdown(final_policy_text)
-    else:
+        # Jika ada di cache tapi belum masuk ke editor session, pindahkan ke editor
+        if editor_key not in st.session_state:
+            st.session_state[editor_key] = st.session_state.policy_cache[signature]
+        
+        st.success("✅ Draf tersedia. Silakan lakukan penyesuaian narasi pada kotak di bawah.")
+
+    # 2. TOMBOL GENERATE (Jika belum ada data atau ingin generate ulang)
+    if signature not in st.session_state.policy_cache:
         if st.button("Generate Kebijakan Strategis (AI)"):
             genai.configure(api_key=USER_API_KEY)
-            with st.spinner('AI sedang mensimulasikan skenario ekonomi dan volatilitas pasar...'):
+            with st.spinner('AI sedang menyusun rekomendasi kebijakan teknokratis...'):
                 try:
+                    # Logika deteksi model sesuai permintaan Min
                     avail = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
                     model_name = next((m for m in avail if 'flash' in m), avail[0] if avail else None)
 
@@ -856,6 +862,8 @@ if df_target is not None:
                     else:
                         generation_config = genai.types.GenerationConfig(temperature=0.4, top_p=0.8)
                         model = genai.GenerativeModel(model_name)
+                        
+                        # Prompt asli Min tanpa perubahan
                         prompt = f"""
 Anda adalah Perencana Pembangunan Nasional Ahli Utama di Bappenas RI. 
 Tugas Anda adalah menyusun Catatan Strategis (Executive Summary) yang ditujukan kepada pimpinan kementerian mengenai prospek ekonomi makro dan arahan kebijakan ke depan.
@@ -903,13 +911,40 @@ Bagian Bawah: LAMPIRAN ANALISIS TEKNIS
 - 2. Identifikasi Risiko Transmisi Sektor Riil: (Uraikan jalur transmisi bagaimana volatilitas pasar/global saat ini berpotensi berdampak pada sektor manufaktur, daya beli, atau investasi bulanan).
 """
                         res = model.generate_content(prompt, generation_config=generation_config)
-                        final_policy_text = res.text
-                        st.session_state.policy_cache[signature] = final_policy_text
-                        with open(CACHE_FILE, "wb") as f: pickle.dump(st.session_state.policy_cache, f)
+                        
+                        # Simpan ke cache file dan session state editor
+                        st.session_state.policy_cache[signature] = res.text
+                        with open(CACHE_FILE, "wb") as f: 
+                            pickle.dump(st.session_state.policy_cache, f)
+                        
+                        st.session_state[editor_key] = res.text
                         st.success(f"Analisis Selesai (Engine: {model_name})")
-                        st.markdown(final_policy_text)
+                        
+                        # Refresh halaman agar kotak editor langsung muncul
+                        st.rerun()
+
                 except Exception as e: 
                     st.error(f"Error AI: {e}")
+
+    # 3. TAMPILAN EDITOR (Hanya muncul jika sudah ada data)
+    if editor_key in st.session_state:
+        st.markdown("---")
+        # Editor utama yang bisa diketik bebas
+        st.session_state[editor_key] = st.text_area(
+            "✍️ Ruang Editor Laporan (Draf untuk Pak Deputi):",
+            value=st.session_state[editor_key],
+            height=500,
+            help="Anda bisa mengubah, menambah, atau menghapus narasi AI di sini sebelum laporan difinalisasi."
+        )
+        
+        # Pratinjau agar tetap terlihat rapi secara visual
+        with st.expander("🔍 Pratinjau Hasil Akhir Laporan", expanded=True):
+            st.markdown(st.session_state[editor_key])
+        
+        # Variabel ini yang akan ditarik oleh fitur ekspor/download
+        final_policy_text = st.session_state[editor_key]
+
+    st.markdown('</div>', unsafe_allow_html=True)
 
     # =========================================================
     # FITUR MAGIC: EXPORT KE EXECUTIVE BRIEF (NOTEBOOKLM STYLE)
