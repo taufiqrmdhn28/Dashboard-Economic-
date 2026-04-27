@@ -963,34 +963,34 @@ Bagian Bawah: LAMPIRAN ANALISIS TEKNIS
             # Buat duplikat grafik agar tampilan asli di web tidak ikut berubah
             fig_export = copy.deepcopy(fig) if 'fig' in locals() else go.Figure()
             
-            # Taktik "Tarik Tambang": Realisasi ditarik ke Kiri, Proyeksi ditarik ke Kanan
+            # Memaksa label angka nempel LURUS secara vertikal (Center) di titiknya
             for trace in fig_export.data:
                 if trace.name and "Proyeksi" in trace.name:
                     jml_titik = len(trace.x) if trace.x is not None else len(trace.y)
                     
-                    # POLA KANAN: Angka proyeksi dilempar ke area kosong di kanan (masa depan)
-                    pola_posisi = ['top right', 'bottom right'] * (jml_titik // 2 + 1)
+                    # POLA TEGAS: Murni Atas-Tengah dan Bawah-Tengah (Tidak ada geser Kanan/Kiri)
+                    pola_posisi = ['top center', 'bottom center'] * (jml_titik // 2 + 1)
                     trace.textposition = pola_posisi[:jml_titik]
                     
-                    # Font diperkecil jadi 9, warna Hijau Tua agar menyatu dengan garis proyeksi
+                    # Font dikecilkan ke 9 agar muat, tebal (bold), warna hijau tua
                     trace.textfont = dict(size=9, color='#065f46', weight='bold')
                     
                 elif trace.name and "Realisasi" in trace.name:
                     jml_titik = len(trace.x) if trace.x is not None else len(trace.y)
                     pola_posisi = ['top center'] * jml_titik
                     
-                    if jml_titik > 1:
-                        # POLA KIRI: 2 Angka realisasi terakhir dilempar ke kiri (menjauhi proyeksi)
-                        pola_posisi[-1] = 'bottom left' # Titik paling ujung ke kiri bawah
-                        pola_posisi[-2] = 'top left'    # Titik sebelumnya ke kiri atas
+                    if jml_titik > 0:
+                        # Titik terakhir realisasi dipaksa ke 'bottom center' lurus ke bawah
+                        # agar tidak nabrak angka proyeksi pertama yang ada di 'top center'
+                        pola_posisi[-1] = 'bottom center'
                         
                     trace.textposition = pola_posisi
                     
-                    # Font diperkecil jadi 9, warna Cokelat Emas agar menyatu dengan garis realisasi
+                    # Font dikecilkan ke 9, tebal (bold), warna cokelat
                     trace.textfont = dict(size=9, color='#92400e', weight='bold')
 
-            # Beri ruang (margin) ekstra di atas dan bawah agar angka tidak terpotong garis tepi
-            fig_export.update_layout(margin=dict(t=60, b=60, l=30, r=60))
+            # Beri margin kanan (r=80) lebih lebar agar angka proyeksi terakhir tidak kepotong layar
+            fig_export.update_layout(margin=dict(t=60, b=60, l=30, r=80))
             
             # Konversi grafik yang sudah dirapikan ke HTML
             chart_html = fig_export.to_html(full_html=False, include_plotlyjs='cdn', default_height='450px')
