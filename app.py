@@ -957,9 +957,30 @@ Bagian Bawah: LAMPIRAN ANALISIS TEKNIS
         try:
             import markdown
             import re
+            import copy
             
-            # 1. Bypass Kaleido: Grafik ke HTML Interaktif
-            chart_html = fig.to_html(full_html=False, include_plotlyjs='cdn', default_height='450px')
+            # 1. Bypass Kaleido: Penyesuaian Grafik Khusus Export
+            # Buat duplikat grafik agar tampilan asli di web tidak ikut berubah
+            fig_export = copy.deepcopy(fig) if 'fig' in locals() else go.Figure()
+            
+            # Memaksa label angka pada garis Proyeksi agar posisinya selang-seling khusus untuk HTML
+            for trace in fig_export.data:
+                if trace.name and "Proyeksi" in trace.name:
+                    jml_titik = len(trace.x) if trace.x is not None else len(trace.y)
+                    pola_posisi = ['top center', 'bottom center', 'top right', 'bottom right'] * (jml_titik // 4 + 2)
+                    trace.textposition = pola_posisi[:jml_titik]
+                    trace.textfont = dict(size=11, color='#0f172a', weight='bold')
+                elif trace.name and "Realisasi" in trace.name:
+                    jml_titik = len(trace.x) if trace.x is not None else len(trace.y)
+                    pola_posisi = ['top center'] * jml_titik
+                    if jml_titik > 0:
+                        pola_posisi[-1] = 'bottom left'
+                    trace.textposition = pola_posisi
+
+            fig_export.update_layout(margin=dict(t=50, b=50, l=30, r=60))
+            
+            # Konversi grafik yang sudah dirapikan ke HTML
+            chart_html = fig_export.to_html(full_html=False, include_plotlyjs='cdn', default_height='450px')
             
             # 2. RENDER TEKS AI 
             html_policy = markdown.markdown(final_policy_text)
@@ -1193,5 +1214,3 @@ Bagian Bawah: LAMPIRAN ANALISIS TEKNIS
             
         except Exception as e:
             st.warning(f"Gagal menyiapkan dokumen HTML. Error detail: {e}")
-
-    st.markdown('</div>', unsafe_allow_html=True)
