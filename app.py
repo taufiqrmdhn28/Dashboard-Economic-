@@ -931,7 +931,7 @@ Bagian Bawah: LAMPIRAN ANALISIS TEKNIS
         st.markdown("---")
         # Editor utama yang bisa diketik bebas
         st.session_state[editor_key] = st.text_area(
-            "✍️ Ruang Editor Laporan (Draf untuk Pak Deputi):",
+            "✍️ Ruang Editor Laporan:",
             value=st.session_state[editor_key],
             height=500,
             help="Anda bisa mengubah, menambah, atau menghapus narasi AI di sini sebelum laporan difinalisasi."
@@ -963,29 +963,31 @@ Bagian Bawah: LAMPIRAN ANALISIS TEKNIS
             # Buat duplikat grafik agar tampilan asli di web tidak ikut berubah
             fig_export = copy.deepcopy(fig) if 'fig' in locals() else go.Figure()
             
-            # Memaksa label angka agar nempel lurus di titik (atas/bawah) dan ukurannya diperkecil
+            # Taktik "Tarik Tambang": Realisasi ditarik ke Kiri, Proyeksi ditarik ke Kanan
             for trace in fig_export.data:
                 if trace.name and "Proyeksi" in trace.name:
                     jml_titik = len(trace.x) if trace.x is not None else len(trace.y)
                     
-                    # POLA BARU: Murni selang-seling atas & bawah agar sejajar persis dengan titiknya
-                    pola_posisi = ['top center', 'bottom center'] * (jml_titik // 2 + 1)
+                    # POLA KANAN: Angka proyeksi dilempar ke area kosong di kanan (masa depan)
+                    pola_posisi = ['top right', 'bottom right'] * (jml_titik // 2 + 1)
                     trace.textposition = pola_posisi[:jml_titik]
                     
-                    # UKURAN FONT DIKECILKAN: Jadi size 10 (sebelumnya bawaan bisa 12-14)
-                    trace.textfont = dict(size=10, color='#0f172a', weight='bold')
+                    # Font diperkecil jadi 9, warna Hijau Tua agar menyatu dengan garis proyeksi
+                    trace.textfont = dict(size=9, color='#065f46', weight='bold')
                     
                 elif trace.name and "Realisasi" in trace.name:
                     jml_titik = len(trace.x) if trace.x is not None else len(trace.y)
                     pola_posisi = ['top center'] * jml_titik
                     
-                    if jml_titik > 0:
-                        # Titik terakhir realisasi dipaksa ke 'bottom left' agar aman dari proyeksi Q1
-                        pola_posisi[-1] = 'bottom left'
+                    if jml_titik > 1:
+                        # POLA KIRI: 2 Angka realisasi terakhir dilempar ke kiri (menjauhi proyeksi)
+                        pola_posisi[-1] = 'bottom left' # Titik paling ujung ke kiri bawah
+                        pola_posisi[-2] = 'top left'    # Titik sebelumnya ke kiri atas
                         
                     trace.textposition = pola_posisi
-                    # Font realisasi juga dikecilkan agar seragam
-                    trace.textfont = dict(size=10, color='#854d0e', weight='bold')
+                    
+                    # Font diperkecil jadi 9, warna Cokelat Emas agar menyatu dengan garis realisasi
+                    trace.textfont = dict(size=9, color='#92400e', weight='bold')
 
             # Beri ruang (margin) ekstra di atas dan bawah agar angka tidak terpotong garis tepi
             fig_export.update_layout(margin=dict(t=60, b=60, l=30, r=60))
