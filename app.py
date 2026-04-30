@@ -501,8 +501,14 @@ if df_target is not None:
         key="daily_view_toggle"
     )
     
-    daily_summary_list = [] # <-- WADAH UNTUK AI
+    # 🔥 WADAH KERANJANG DATA (Kita siapkan 3 sekaligus!)
+    daily_summary_list = []  # Untuk dikirim ke otak AI (berubah sesuai UI)
+    daily_berjalan_list = [] # Spesial untuk diselundupkan ke Tab "Data Berjalan" di HTML
+    daily_rata_list = []     # Spesial untuk diselundupkan ke Tab "Rata-rata" di HTML
+
     daily_summary_str = "Data harian tidak tersedia."
+    daily_berjalan_str = "Data harian tidak tersedia."
+    daily_rata_str = "Data harian tidak tersedia."
 
     if 'df_daily' in locals() and df_daily is not None:
         daily_cols = st.columns(4)
@@ -521,7 +527,7 @@ if df_target is not None:
             date_str = date_obj.strftime("%d %b %Y")
             current_year = date_obj.year
             
-            # --- A. PERHITUNGAN DATA BERJALAN (LAMA) ---
+            # --- A. PERHITUNGAN DATA BERJALAN ---
             if len(valid_series) > 1:
                 prev_row = valid_series.iloc[-2]
                 val_prev = prev_row[col]
@@ -536,7 +542,7 @@ if df_target is not None:
             else:
                 ytd = 0; ytd_str = "YTD: -"
             
-            # --- B. PERHITUNGAN DATA RATA-RATA (BARU - REQUEST KOOR) ---
+            # --- B. PERHITUNGAN DATA RATA-RATA ---
             current_year_data = valid_series[valid_series[date_col_daily].dt.year == current_year]
             avg_current = current_year_data[col].mean() if not current_year_data.empty else val
             avg_prev = prev_year_data[col].mean() if not prev_year_data.empty else 0
@@ -546,36 +552,33 @@ if df_target is not None:
             else:
                 avg_growth = 0
 
-            # --- C. SWITCH TAMPILAN BERDASARKAN TOMBOL ---
+            # --- 🔥 RAHASIANYA DI SINI MIN! SIMPAN KE WADAH EXPORT SECARA BERSAMAAN 🔥 ---
+            disp_val_b = f"{val:,.2f}" if val > 10 else f"{val:.2f}"
+            daily_berjalan_list.append(f"{col}: {disp_val_b} (DTD: {dtd:+.2f}%)")
+            
+            disp_val_r = f"{avg_current:,.2f}" if avg_current > 10 else f"{avg_current:.2f}"
+            daily_rata_list.append(f"{col}: Avg {current_year} = {disp_val_r} (Perubahan vs Avg 2025: {avg_growth:+.2f}%)")
+
+            # --- C. SWITCH TAMPILAN UI STREAMLIT & DATA UNTUK AI ---
             if "Berjalan" in selected_daily_view:
-                # TAMPILAN SPOT
-                disp_val = f"{val:,.2f}" if val > 10 else f"{val:.2f}"
+                disp_val = disp_val_b
                 color_1 = "badge-red" if dtd < 0 else "badge-green"
                 color_2 = "badge-red" if ytd < 0 else "badge-green"
                 badge_1_str = f"DTD: {dtd:+.2f}%"
                 badge_2_str = ytd_str
                 subtitle_str = f"Data Spot: {date_str}"
-                
-                # Rekap untuk dibaca AI
-                daily_summary_list.append(f"{col}: {disp_val} (DTD: {dtd:+.2f}%)")
+                daily_summary_list.append(f"{col}: {disp_val_b} (DTD: {dtd:+.2f}%)")
             else:
-                # TAMPILAN RATA-RATA (REQUEST KOOR)
-                disp_val = f"{avg_current:,.2f}" if avg_current > 10 else f"{avg_current:.2f}"
-                color_1 = "badge-neutral" # Warna abu-abu elegan untuk info rata-rata 2025
+                disp_val = disp_val_r
+                color_1 = "badge-neutral" 
                 color_2 = "badge-red" if avg_growth < 0 else "badge-green"
-                
                 avg_prev_disp = f"{avg_prev:,.2f}" if avg_prev > 10 else f"{avg_prev:.2f}"
                 badge_1_str = f"Avg '25: {avg_prev_disp}"
-                
-                # PERBAIKAN: Hapus (Idx: ...) di sini
                 badge_2_str = f"Δ {avg_growth:+.2f}%"
-                
                 subtitle_str = f"Rata-rata YTD {current_year}"
-                
-                # Rekap untuk dibaca AI
-                daily_summary_list.append(f"{col}: Avg {current_year} = {disp_val} (Perubahan vs Avg 2025: {avg_growth:+.2f}%)")
+                daily_summary_list.append(f"{col}: Avg {current_year} = {disp_val_r} (Perubahan vs Avg 2025: {avg_growth:+.2f}%)")
 
-            # --- D. RENDER KOTAK KACA HTML ---
+            # --- D. RENDER KOTAK KACA HTML (Di layar Streamlit) ---
             html = f"""
             <div class="glass-card" style="padding: 15px; margin-bottom: 10px;">
                 <div class="card-title">{col}</div>
@@ -588,8 +591,10 @@ if df_target is not None:
             with daily_cols[idx % 4]: st.markdown(html, unsafe_allow_html=True)
             idx += 1
             
-        if daily_summary_list:
-            daily_summary_str = " | ".join(daily_summary_list)
+        # Tutup semua keranjang saat perulangan selesai
+        if daily_summary_list: daily_summary_str = " | ".join(daily_summary_list)
+        if daily_berjalan_list: daily_berjalan_str = " | ".join(daily_berjalan_list)
+        if daily_rata_list: daily_rata_str = " | ".join(daily_rata_list)
             
     st.markdown("<br>", unsafe_allow_html=True)
 
