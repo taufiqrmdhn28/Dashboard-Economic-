@@ -965,34 +965,22 @@ Bagian Bawah: LAMPIRAN ANALISIS TEKNIS
             
             # Memaksa label angka agar rapi dan tidak saling tabrak
             for trace in fig_export.data:
-                # 🔥 FILTER PENGAMAN: Cek apakah ini Grafik Garis (Scatter)
-                # Aturan 'top center', 'top left' dll hanya berlaku untuk Scatter.
                 trace_type = getattr(trace, 'type', 'scatter')
-                
                 if trace_type == 'scatter':
                     if trace.name and "Proyeksi" in trace.name:
                         jml_titik = len(trace.x) if trace.x is not None else len(trace.y)
-                        
-                        # POLA PROYEKSI: Dimulai dari Bawah, lalu Atas
                         pola_posisi = ['bottom center', 'top center'] * (jml_titik // 2 + 1)
                         trace.textposition = pola_posisi[:jml_titik]
                         trace.textfont = dict(size=9, color='#065f46', weight='bold')
-                        
                     elif trace.name and "Realisasi" in trace.name:
                         jml_titik = len(trace.x) if trace.x is not None else len(trace.y)
                         pola_posisi = ['top center'] * jml_titik
-                        
                         if jml_titik > 0:
-                            # Titik terakhir (5.39%) dipaksa minggir ke "KIRI ATAS" (top left)
                             pola_posisi[-1] = 'top left'
-                            
                         trace.textposition = pola_posisi
                         trace.textfont = dict(size=9, color='#92400e', weight='bold')
 
-            # Beri margin kanan (r=80) agar aman
             fig_export.update_layout(margin=dict(t=60, b=60, l=30, r=80))
-            
-            # Konversi grafik yang sudah dirapikan ke HTML
             chart_html = fig_export.to_html(full_html=False, include_plotlyjs='cdn', default_height='450px')
             
             # 2. RENDER TEKS AI 
@@ -1037,147 +1025,36 @@ Bagian Bawah: LAMPIRAN ANALISIS TEKNIS
                 <style>
                     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;800&display=swap');
                     
-                    body {{ 
-                        font-family: 'Plus Jakarta Sans', sans-serif; 
-                        background-color: #cbd5e1; /* Meja abu-abu */
-                        color: #334155; 
-                        padding: 50px 20px; 
-                        line-height: 1.6; 
-                        margin: 0;
-                    }}
-                    .report-container {{ 
-                        max-width: 1100px; 
-                        margin: 0 auto; 
-                        background: #ffffff; 
-                        border-radius: 20px; 
-                        box-shadow: 0 25px 50px -12px rgba(0,0,0,0.3); 
-                        overflow: hidden; 
-                    }}
+                    body {{ font-family: 'Plus Jakarta Sans', sans-serif; background-color: #cbd5e1; color: #334155; padding: 50px 20px; line-height: 1.6; margin: 0; }}
+                    .report-container {{ max-width: 1100px; margin: 0 auto; background: #ffffff; border-radius: 20px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.3); overflow: hidden; }}
                     
-                    /* HEADER BIRU GRADASI */
-                    .header {{
-                        background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
-                        padding: 50px 70px;
-                        color: white;
-                    }}
-                    .header h1 {{
-                        font-size: 40px;
-                        font-weight: 800;
-                        margin: 0 0 10px 0;
-                        color: #ffffff;
-                        letter-spacing: -0.5px;
-                        line-height: 1.2;
-                    }}
-                    .header p {{
-                        font-size: 16px;
-                        color: #94a3b8;
-                        margin: 0;
-                        letter-spacing: 0.5px;
-                    }}
+                    .header {{ background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%); padding: 50px 70px; color: white; }}
+                    .header h1 {{ font-size: 40px; font-weight: 800; margin: 0 0 10px 0; color: #ffffff; letter-spacing: -0.5px; line-height: 1.2; }}
+                    .header p {{ font-size: 16px; color: #94a3b8; margin: 0; letter-spacing: 0.5px; }}
                     
-                    .content-body {{
-                        padding: 40px 70px 60px 70px;
-                    }}
+                    /* BADGE MODE DATA DI HEADER */
+                    .badge-mode {{ display: inline-block; background: rgba(255, 255, 255, 0.15); border: 1px solid rgba(255, 255, 255, 0.4); color: #ffffff; padding: 8px 16px; border-radius: 8px; font-size: 14.5px; font-weight: 700; margin-top: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }}
                     
-                    .section-label {{ 
-                        font-size: 22px; 
-                        font-weight: 800; 
-                        color: #0f172a; 
-                        display: flex; 
-                        align-items: center; 
-                        gap: 12px; 
-                        margin: 40px 0 20px 0; 
-                    }}
-                    .section-label span {{ 
-                        background: #eff6ff; 
-                        border: 1px solid #bfdbfe; 
-                        padding: 8px 12px; 
-                        border-radius: 10px; 
-                        font-size: 18px; 
-                    }}
+                    .content-body {{ padding: 40px 70px 60px 70px; }}
+                    .section-label {{ font-size: 22px; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 12px; margin: 40px 0 20px 0; }}
+                    .section-label span {{ background: #eff6ff; border: 1px solid #bfdbfe; padding: 8px 12px; border-radius: 10px; font-size: 18px; }}
+                    .sub-label {{ font-size: 15px; color: #64748b; font-weight: 600; margin-left: auto; background: #f1f5f9; padding: 4px 10px; border-radius: 6px; }}
                     
-                    .chart-wrapper {{ 
-                        background: #ffffff; 
-                        border: 1px solid #e2e8f0; 
-                        border-radius: 16px; 
-                        padding: 10px; 
-                        box-shadow: 0 4px 10px rgba(0,0,0,0.03); 
-                        margin-bottom: 50px; 
-                    }}
-                    
-                    /* ===== RAHASIA BIAR MENYAMPING RAPI ===== */
-                    .data-list {{ 
-                        list-style: none; 
-                        padding: 0; 
-                        margin: 0; 
-                        display: grid; 
-                        grid-template-columns: repeat(3, 1fr); /* DIBIKIN 3 KOLOM MENYAMPING */
-                        gap: 15px; 
-                    }}
-                    .data-list li {{
-                        background: #ffffff;
-                        padding: 14px 16px;
-                        border-radius: 10px;
-                        border: 1px solid #e2e8f0;
-                        font-size: 13.5px;
-                        color: #334155;
-                        display: flex;
-                        align-items: center;
-                        gap: 12px;
-                        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-                        font-weight: 600;
-                        margin: 0; /* Margin bawah dihapus karena sudah rapi pakai grid */
-                    }}
+                    .chart-wrapper {{ background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); margin-bottom: 50px; }}
+                    .data-list {{ list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }}
+                    .data-list li {{ background: #ffffff; padding: 14px 16px; border-radius: 10px; border: 1px solid #e2e8f0; font-size: 13.5px; color: #334155; display: flex; align-items: center; gap: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); font-weight: 600; margin: 0; }}
                     .bullet-blue {{ display: inline-block; width: 10px; height: 10px; background: #3b82f6; border-radius: 50%; flex-shrink: 0; }}
                     .badge-blue {{ background: #dbeafe; color: #1e40af; padding: 4px 8px; border-radius: 6px; font-weight: 800; font-size: 11px; flex-shrink: 0; }}
                     .badge-red {{ background: #fee2e2; color: #991b1b; padding: 4px 8px; border-radius: 6px; font-weight: 800; font-size: 11px; flex-shrink: 0; }}
                     
-                    /* REKOMENDASI KEBIJAKAN */
-                    .ai-box {{ 
-                        background: linear-gradient(145deg, #f8fafc, #eff6ff); 
-                        border: 1px solid #bfdbfe; 
-                        border-radius: 20px; 
-                        padding: 40px; 
-                        margin-top: 60px; 
-                        position: relative; 
-                    }}
-                    .ai-box::before {{ 
-                        content:''; 
-                        position: absolute; top:0; left:0; width:100%; height:6px; 
-                        background: linear-gradient(90deg, #2563eb, #9333ea); 
-                        border-radius: 20px 20px 0 0; 
-                    }}
-                    .policy-title {{ 
-                        color: #1e3a8a; 
-                        font-size: 20px; 
-                        font-weight: 800; 
-                        border-bottom: 2px dashed #cbd5e1; 
-                        padding-bottom: 12px; 
-                        margin-top: 35px; 
-                        margin-bottom: 20px; 
-                    }}
+                    .ai-box {{ background: linear-gradient(145deg, #f8fafc, #eff6ff); border: 1px solid #bfdbfe; border-radius: 20px; padding: 40px; margin-top: 60px; position: relative; }}
+                    .ai-box::before {{ content:''; position: absolute; top:0; left:0; width:100%; height:6px; background: linear-gradient(90deg, #2563eb, #9333ea); border-radius: 20px 20px 0 0; }}
+                    .policy-title {{ color: #1e3a8a; font-size: 20px; font-weight: 800; border-bottom: 2px dashed #cbd5e1; padding-bottom: 12px; margin-top: 35px; margin-bottom: 20px; }}
                     .premium-list {{ list-style: none; padding: 0; margin: 0; }}
-                    .premium-list li {{ 
-                        background: #ffffff; 
-                        border: 1px solid #e2e8f0; 
-                        border-left: 5px solid #3b82f6; 
-                        padding: 25px 30px; 
-                        border-radius: 12px; 
-                        margin-bottom: 15px; 
-                        box-shadow: 0 4px 15px rgba(0,0,0,0.03); 
-                        font-size: 15.5px; 
-                        color: #1e293b; 
-                    }}
+                    .premium-list li {{ background: #ffffff; border: 1px solid #e2e8f0; border-left: 5px solid #3b82f6; padding: 25px 30px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); font-size: 15.5px; color: #1e293b; }}
                     .highlight-text {{ color: #2563eb; font-weight: 800; }}
                     
-                    .footer {{ 
-                        text-align: center; 
-                        padding: 30px; 
-                        margin-top: 50px;
-                        color: #94a3b8; 
-                        font-size: 13px; 
-                        border-top: 1px solid #e2e8f0; 
-                    }}
+                    .footer {{ text-align: center; padding: 30px; margin-top: 50px; color: #94a3b8; font-size: 13px; border-top: 1px solid #e2e8f0; }}
                 </style>
             </head>
             <body>
@@ -1186,18 +1063,27 @@ Bagian Bawah: LAMPIRAN ANALISIS TEKNIS
                     <div class="header">
                         <h1>Macroeconomic Brief</h1>
                         <p>Analisis Perkembangan Ekonomi Makro Bappenas RI</p>
+                        <div class="badge-mode">📌 Basis Data: {selected_view}</div>
                     </div>
 
                     <div class="content-body">
-                        <div class="section-label" style="margin-top: 0;"><span>📈</span> Proyeksi Pertumbuhan Ekonomi (DFM)</div>
+                        <div class="section-label" style="margin-top: 0;">
+                            <span>📈</span> Proyeksi Pertumbuhan Ekonomi (DFM)
+                        </div>
                         <div class="chart-wrapper">
                             {chart_html}
                         </div>
 
-                        <div class="section-label"><span>🏢</span> Kinerja Seluruh Sektor Riil</div>
+                        <div class="section-label">
+                            <span>🏢</span> Kinerja Seluruh Sektor Riil 
+                            <div class="sub-label">Mode: {selected_view}</div>
+                        </div>
                         {html_monthly}
 
-                        <div class="section-label"><span>⚡</span> Volatilitas Pasar Harian</div>
+                        <div class="section-label">
+                            <span>⚡</span> Volatilitas Pasar Harian 
+                            <div class="sub-label">Mode: {selected_view}</div>
+                        </div>
                         {html_daily}
 
                         <div class="ai-box">
