@@ -960,10 +960,8 @@ Bagian Bawah: LAMPIRAN ANALISIS TEKNIS
             import copy
             
             # 1. Bypass Kaleido: Penyesuaian Grafik Khusus Export
-            # Buat duplikat grafik agar tampilan asli di web tidak ikut berubah
             fig_export = copy.deepcopy(fig) if 'fig' in locals() else go.Figure()
             
-            # Memaksa label angka agar rapi dan tidak saling tabrak
             for trace in fig_export.data:
                 trace_type = getattr(trace, 'type', 'scatter')
                 if trace_type == 'scatter':
@@ -990,32 +988,38 @@ Bagian Bawah: LAMPIRAN ANALISIS TEKNIS
             html_policy = html_policy.replace("<h3>", "<h3 class='policy-title'>✨ ")
             html_policy = html_policy.replace("<strong>", "<strong class='highlight-text'>")
             
-            # 3. BEDAH SEMUA DATA BULANAN (Sektor Riil)
-            clean_monthly = monthly_summary_str.replace('\n', ' | ')
-            html_monthly = "<ul class='data-list'>"
-            for item in clean_monthly.split(' | '):
-                item_clean = item.strip()
-                if item_clean and "tidak tersedia" not in item_clean.lower():
-                    if "-" in item_clean:
-                        html_monthly += f"<li><span class='badge-red'>▼</span> {item_clean}</li>"
-                    else:
-                        html_monthly += f"<li><span class='badge-blue'>▲</span> {item_clean}</li>"
-            html_monthly += "</ul>"
-            if not html_monthly.replace("<ul class='data-list'></ul>", ""): 
-                html_monthly = "<p>Data Sektor Riil tidak tersedia.</p>"
+            # 3. FUNGSI PINTAR: Mengubah teks jadi kotak-kotak HTML
+            def parse_to_html_list(data_str, is_market=False):
+                if not data_str: return "<p>Data tidak tersedia.</p>"
+                clean_data = data_str.replace('\n', ' | ')
+                html_list = "<ul class='data-list'>"
+                for item in clean_data.split(' | '):
+                    item_clean = item.strip()
+                    if item_clean and "tidak tersedia" not in item_clean.lower():
+                        if is_market:
+                            html_list += f"<li><span class='bullet-blue'></span> {item_clean}</li>"
+                        else:
+                            if "-" in item_clean:
+                                html_list += f"<li><span class='badge-red'>▼</span> {item_clean}</li>"
+                            else:
+                                html_list += f"<li><span class='badge-blue'>▲</span> {item_clean}</li>"
+                html_list += "</ul>"
+                return html_list if "<li" in html_list else "<p>Data tidak tersedia.</p>"
 
-            # 4. BEDAH DATA HARIAN (Pasar)
-            clean_daily = daily_summary_str.replace('\n', ' | ')
-            html_daily = "<ul class='data-list'>"
-            for item in clean_daily.split(' | '):
-                item_clean = item.strip()
-                if item_clean and "tidak tersedia" not in item_clean.lower():
-                    html_daily += f"<li><span class='bullet-blue'></span> {item_clean}</li>"
-            html_daily += "</ul>"
-            if not html_daily.replace("<ul class='data-list'></ul>", ""): 
-                html_daily = "<p>Data Harian tidak tersedia.</p>"
+            # 4. SIAPKAN KEDUA DATA (BERJALAN & RATA-RATA)
+            # Jika Min sudah punya variabel khusus, kita pakai. Kalau belum, pakai yang ada di layar.
+            mb_str = locals().get('monthly_berjalan_str', monthly_summary_str)
+            mr_str = locals().get('monthly_rata_str', monthly_summary_str)
+            db_str = locals().get('daily_berjalan_str', daily_summary_str)
+            dr_str = locals().get('daily_rata_str', daily_summary_str)
 
-            # 5. TEMPLATE HTML/CSS PREMIUM (LIST MENYAMPING)
+            html_monthly_berjalan = parse_to_html_list(mb_str, False)
+            html_monthly_rata = parse_to_html_list(mr_str, False)
+            
+            html_daily_berjalan = parse_to_html_list(db_str, True)
+            html_daily_rata = parse_to_html_list(dr_str, True)
+
+            # 5. TEMPLATE HTML PREMIUM DENGAN TAB INTERAKTIF
             html_template = f"""
             <!DOCTYPE html>
             <html lang="id">
@@ -1032,18 +1036,22 @@ Bagian Bawah: LAMPIRAN ANALISIS TEKNIS
                     .header h1 {{ font-size: 40px; font-weight: 800; margin: 0 0 10px 0; color: #ffffff; letter-spacing: -0.5px; line-height: 1.2; }}
                     .header p {{ font-size: 16px; color: #94a3b8; margin: 0; letter-spacing: 0.5px; }}
                     
-                    /* BADGE MODE DATA DI HEADER */
-                    .badge-mode {{ display: inline-block; background: rgba(255, 255, 255, 0.15); border: 1px solid rgba(255, 255, 255, 0.4); color: #ffffff; padding: 8px 16px; border-radius: 8px; font-size: 14.5px; font-weight: 700; margin-top: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }}
-                    
                     .content-body {{ padding: 40px 70px 60px 70px; }}
-                    .section-label {{ font-size: 22px; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 12px; margin: 40px 0 20px 0; }}
+                    
+                    /* TAMPILAN LABEL & TAB INTERAKTIF */
+                    .section-header {{ display: flex; align-items: center; justify-content: space-between; margin: 40px 0 20px 0; }}
+                    .section-label {{ font-size: 22px; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 12px; margin: 0; }}
                     .section-label span {{ background: #eff6ff; border: 1px solid #bfdbfe; padding: 8px 12px; border-radius: 10px; font-size: 18px; }}
-                    .sub-label {{ font-size: 15px; color: #64748b; font-weight: 600; margin-left: auto; background: #f1f5f9; padding: 4px 10px; border-radius: 6px; }}
+                    
+                    .tab-container {{ display: flex; gap: 10px; background: #f8fafc; padding: 6px; border-radius: 12px; border: 1px solid #e2e8f0; }}
+                    .tab-btn {{ background: transparent; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 700; font-family: inherit; color: #64748b; transition: 0.3s; font-size: 14px; }}
+                    .tab-btn:hover {{ background: #e2e8f0; color: #0f172a; }}
+                    .tab-btn.active {{ background: #3b82f6; color: white; box-shadow: 0 2px 4px rgba(59,130,246,0.3); }}
                     
                     .chart-wrapper {{ background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); margin-bottom: 50px; }}
                     .data-list {{ list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }}
-                    .data-list li {{ background: #ffffff; padding: 14px 16px; border-radius: 10px; border: 1px solid #e2e8f0; font-size: 13.5px; color: #334155; display: flex; align-items: center; gap: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); font-weight: 600; margin: 0; }}
-                    .bullet-blue {{ display: inline-block; width: 10px; height: 10px; background: #3b82f6; border-radius: 50%; flex-shrink: 0; }}
+                    .data-list li {{ background: #ffffff; padding: 14px 16px; border-radius: 10px; border: 1px solid #e2e8f0; font-size: 13.5px; color: #334155; display: flex; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02); font-weight: 600; margin: 0; }}
+                    .bullet-blue {{ display: inline-block; width: 10px; height: 10px; background: #3b82f6; border-radius: 50%; flex-shrink: 0; margin-right: 10px; }}
                     .badge-blue {{ background: #dbeafe; color: #1e40af; padding: 4px 8px; border-radius: 6px; font-weight: 800; font-size: 11px; flex-shrink: 0; }}
                     .badge-red {{ background: #fee2e2; color: #991b1b; padding: 4px 8px; border-radius: 6px; font-weight: 800; font-size: 11px; flex-shrink: 0; }}
                     
@@ -1051,11 +1059,31 @@ Bagian Bawah: LAMPIRAN ANALISIS TEKNIS
                     .ai-box::before {{ content:''; position: absolute; top:0; left:0; width:100%; height:6px; background: linear-gradient(90deg, #2563eb, #9333ea); border-radius: 20px 20px 0 0; }}
                     .policy-title {{ color: #1e3a8a; font-size: 20px; font-weight: 800; border-bottom: 2px dashed #cbd5e1; padding-bottom: 12px; margin-top: 35px; margin-bottom: 20px; }}
                     .premium-list {{ list-style: none; padding: 0; margin: 0; }}
-                    .premium-list li {{ background: #ffffff; border: 1px solid #e2e8f0; border-left: 5px solid #3b82f6; padding: 25px 30px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); font-size: 15.5px; color: #1e293b; }}
+                    .premium-list li {{ background: #ffffff; border: 1px solid #e2e8f0; border-left: 5px solid #3b82f6; padding: 25px 30px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); font-size: 15.5px; color: #1e293b; line-height: 1.8; }}
                     .highlight-text {{ color: #2563eb; font-weight: 800; }}
                     
                     .footer {{ text-align: center; padding: 30px; margin-top: 50px; color: #94a3b8; font-size: 13px; border-top: 1px solid #e2e8f0; }}
                 </style>
+                <script>
+                    function openTabSR(evt, tabName) {{
+                        var i, tabcontent, tablinks;
+                        tabcontent = document.getElementsByClassName("tab-content-sr");
+                        for (i = 0; i < tabcontent.length; i++) {{ tabcontent[i].style.display = "none"; }}
+                        tablinks = document.getElementsByClassName("tab-btn-sr");
+                        for (i = 0; i < tablinks.length; i++) {{ tablinks[i].className = tablinks[i].className.replace(" active", ""); }}
+                        document.getElementById(tabName).style.display = "block";
+                        evt.currentTarget.className += " active";
+                    }}
+                    function openTabPH(evt, tabName) {{
+                        var i, tabcontent, tablinks;
+                        tabcontent = document.getElementsByClassName("tab-content-ph");
+                        for (i = 0; i < tabcontent.length; i++) {{ tabcontent[i].style.display = "none"; }}
+                        tablinks = document.getElementsByClassName("tab-btn-ph");
+                        for (i = 0; i < tablinks.length; i++) {{ tablinks[i].className = tablinks[i].className.replace(" active", ""); }}
+                        document.getElementById(tabName).style.display = "block";
+                        evt.currentTarget.className += " active";
+                    }}
+                </script>
             </head>
             <body>
                 <div class="report-container">
@@ -1063,31 +1091,41 @@ Bagian Bawah: LAMPIRAN ANALISIS TEKNIS
                     <div class="header">
                         <h1>Macroeconomic Brief</h1>
                         <p>Analisis Perkembangan Ekonomi Makro Bappenas RI</p>
-                        <div class="badge-mode">📌 Basis Data: {selected_view}</div>
                     </div>
 
                     <div class="content-body">
-                        <div class="section-label" style="margin-top: 0;">
-                            <span>📈</span> Proyeksi Pertumbuhan Ekonomi (DFM)
+                        
+                        <div class="section-header">
+                            <div class="section-label"><span>📈</span> Proyeksi Pertumbuhan Ekonomi (DFM)</div>
                         </div>
                         <div class="chart-wrapper">
                             {chart_html}
                         </div>
 
-                        <div class="section-label">
-                            <span>🏢</span> Kinerja Seluruh Sektor Riil 
-                            <div class="sub-label">Mode: {selected_view}</div>
+                        <!-- TAB SEKTOR RIIL -->
+                        <div class="section-header">
+                            <div class="section-label"><span>🏢</span> Kinerja Seluruh Sektor Riil</div>
+                            <div class="tab-container">
+                                <button class="tab-btn tab-btn-sr active" onclick="openTabSR(event, 'sr-berjalan')">Data Berjalan</button>
+                                <button class="tab-btn tab-btn-sr" onclick="openTabSR(event, 'sr-rata')">Rata-rata</button>
+                            </div>
                         </div>
-                        {html_monthly}
+                        <div id="sr-berjalan" class="tab-content-sr" style="display: block;">{html_monthly_berjalan}</div>
+                        <div id="sr-rata" class="tab-content-sr" style="display: none;">{html_monthly_rata}</div>
 
-                        <div class="section-label">
-                            <span>⚡</span> Volatilitas Pasar Harian 
-                            <div class="sub-label">Mode: {selected_view}</div>
+                        <!-- TAB PASAR HARIAN -->
+                        <div class="section-header">
+                            <div class="section-label"><span>⚡</span> Volatilitas Pasar Harian</div>
+                            <div class="tab-container">
+                                <button class="tab-btn tab-btn-ph active" onclick="openTabPH(event, 'ph-berjalan')">Data Berjalan</button>
+                                <button class="tab-btn tab-btn-ph" onclick="openTabPH(event, 'ph-rata')">Rata-rata</button>
+                            </div>
                         </div>
-                        {html_daily}
+                        <div id="ph-berjalan" class="tab-content-ph" style="display: block;">{html_daily_berjalan}</div>
+                        <div id="ph-rata" class="tab-content-ph" style="display: none;">{html_daily_rata}</div>
 
                         <div class="ai-box">
-                            <div class="section-label" style="margin-top: 0; border:none; padding:0;"><span>🧠</span> Rekomendasi Kebijakan</div>
+                            <div class="section-label" style="margin-top: 0; margin-bottom: 25px; border:none; padding:0;"><span>🧠</span> Rekomendasi Kebijakan</div>
                             {html_policy}
                         </div>
                         
