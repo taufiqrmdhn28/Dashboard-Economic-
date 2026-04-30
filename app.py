@@ -1006,20 +1006,17 @@ Bagian Bawah: LAMPIRAN ANALISIS TEKNIS
                 html_list += "</ul>"
                 return html_list if "<li" in html_list else "<p>Data tidak tersedia.</p>"
 
-            # 4. SIAPKAN KEDUA DATA (BERJALAN & RATA-RATA)
-            # Jika Min sudah punya variabel khusus, kita pakai. Kalau belum, pakai yang ada di layar.
-            mb_str = locals().get('monthly_berjalan_str', monthly_summary_str)
-            mr_str = locals().get('monthly_rata_str', monthly_summary_str)
+            # 4. SIAPKAN DATA UNTUK RENDER
+            # Sektor Riil (Cukup 1 Tampilan, langsung pakai variabel dari dashboard)
+            html_monthly = parse_to_html_list(monthly_summary_str, False)
+            
+            # Pasar Harian (Butuh 2 Tampilan untuk fitur Tab)
             db_str = locals().get('daily_berjalan_str', daily_summary_str)
             dr_str = locals().get('daily_rata_str', daily_summary_str)
-
-            html_monthly_berjalan = parse_to_html_list(mb_str, False)
-            html_monthly_rata = parse_to_html_list(mr_str, False)
-            
             html_daily_berjalan = parse_to_html_list(db_str, True)
             html_daily_rata = parse_to_html_list(dr_str, True)
 
-            # 5. TEMPLATE HTML PREMIUM DENGAN TAB INTERAKTIF
+            # 5. TEMPLATE HTML PREMIUM
             html_template = f"""
             <!DOCTYPE html>
             <html lang="id">
@@ -1065,15 +1062,6 @@ Bagian Bawah: LAMPIRAN ANALISIS TEKNIS
                     .footer {{ text-align: center; padding: 30px; margin-top: 50px; color: #94a3b8; font-size: 13px; border-top: 1px solid #e2e8f0; }}
                 </style>
                 <script>
-                    function openTabSR(evt, tabName) {{
-                        var i, tabcontent, tablinks;
-                        tabcontent = document.getElementsByClassName("tab-content-sr");
-                        for (i = 0; i < tabcontent.length; i++) {{ tabcontent[i].style.display = "none"; }}
-                        tablinks = document.getElementsByClassName("tab-btn-sr");
-                        for (i = 0; i < tablinks.length; i++) {{ tablinks[i].className = tablinks[i].className.replace(" active", ""); }}
-                        document.getElementById(tabName).style.display = "block";
-                        evt.currentTarget.className += " active";
-                    }}
                     function openTabPH(evt, tabName) {{
                         var i, tabcontent, tablinks;
                         tabcontent = document.getElementsByClassName("tab-content-ph");
@@ -1102,16 +1090,11 @@ Bagian Bawah: LAMPIRAN ANALISIS TEKNIS
                             {chart_html}
                         </div>
 
-                        <!-- TAB SEKTOR RIIL -->
+                        <!-- SEKTOR RIIL (TANPA TAB, STATIS SESUAI DASHBOARD) -->
                         <div class="section-header">
                             <div class="section-label"><span>🏢</span> Kinerja Seluruh Sektor Riil</div>
-                            <div class="tab-container">
-                                <button class="tab-btn tab-btn-sr active" onclick="openTabSR(event, 'sr-berjalan')">Data Berjalan</button>
-                                <button class="tab-btn tab-btn-sr" onclick="openTabSR(event, 'sr-rata')">Rata-rata</button>
-                            </div>
                         </div>
-                        <div id="sr-berjalan" class="tab-content-sr" style="display: block;">{html_monthly_berjalan}</div>
-                        <div id="sr-rata" class="tab-content-sr" style="display: none;">{html_monthly_rata}</div>
+                        {html_monthly}
 
                         <!-- TAB PASAR HARIAN -->
                         <div class="section-header">
