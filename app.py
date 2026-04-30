@@ -554,7 +554,9 @@ if df_target is not None:
 
             # --- 🔥 RAHASIANYA DI SINI MIN! SIMPAN KE WADAH EXPORT SECARA BERSAMAAN 🔥 ---
             disp_val_b = f"{val:,.2f}" if val > 10 else f"{val:.2f}"
-            daily_berjalan_list.append(f"{col}: {disp_val_b} (DTD: {dtd:+.2f}%)")
+            
+            # PERBAIKAN: Masukkan YTD ke dalam kurung
+            daily_berjalan_list.append(f"{col}: {disp_val_b} (DTD: {dtd:+.2f}%, {ytd_str})")
             
             disp_val_r = f"{avg_current:,.2f}" if avg_current > 10 else f"{avg_current:.2f}"
             daily_rata_list.append(f"{col}: Avg {current_year} = {disp_val_r} (Perubahan vs Avg 2025: {avg_growth:+.2f}%)")
