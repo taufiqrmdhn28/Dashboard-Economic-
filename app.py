@@ -965,26 +965,29 @@ Bagian Bawah: LAMPIRAN ANALISIS TEKNIS
             
             # Memaksa label angka agar rapi dan tidak saling tabrak
             for trace in fig_export.data:
-                if trace.name and "Proyeksi" in trace.name:
-                    jml_titik = len(trace.x) if trace.x is not None else len(trace.y)
-                    
-                    # POLA PROYEKSI: Dimulai dari Bawah, lalu Atas, selang-seling (Tengah lurus)
-                    pola_posisi = ['bottom center', 'top center'] * (jml_titik // 2 + 1)
-                    trace.textposition = pola_posisi[:jml_titik]
-                    trace.textfont = dict(size=9, color='#065f46', weight='bold')
-                    
-                elif trace.name and "Realisasi" in trace.name:
-                    jml_titik = len(trace.x) if trace.x is not None else len(trace.y)
-                    pola_posisi = ['top center'] * jml_titik
-                    
-                    if jml_titik > 0:
-                        # 🔥 INI KUNCINYA MIN 🔥
-                        # Titik terakhir (5.39%) kita paksa minggir ke "KIRI ATAS" (top left)
-                        # Biar nggak diseruduk sama angka Proyeksi Q2 2026
-                        pola_posisi[-1] = 'top left'
+                # 🔥 FILTER PENGAMAN: Cek apakah ini Grafik Garis (Scatter)
+                # Aturan 'top center', 'top left' dll hanya berlaku untuk Scatter.
+                trace_type = getattr(trace, 'type', 'scatter')
+                
+                if trace_type == 'scatter':
+                    if trace.name and "Proyeksi" in trace.name:
+                        jml_titik = len(trace.x) if trace.x is not None else len(trace.y)
                         
-                    trace.textposition = pola_posisi
-                    trace.textfont = dict(size=9, color='#92400e', weight='bold')
+                        # POLA PROYEKSI: Dimulai dari Bawah, lalu Atas
+                        pola_posisi = ['bottom center', 'top center'] * (jml_titik // 2 + 1)
+                        trace.textposition = pola_posisi[:jml_titik]
+                        trace.textfont = dict(size=9, color='#065f46', weight='bold')
+                        
+                    elif trace.name and "Realisasi" in trace.name:
+                        jml_titik = len(trace.x) if trace.x is not None else len(trace.y)
+                        pola_posisi = ['top center'] * jml_titik
+                        
+                        if jml_titik > 0:
+                            # Titik terakhir (5.39%) dipaksa minggir ke "KIRI ATAS" (top left)
+                            pola_posisi[-1] = 'top left'
+                            
+                        trace.textposition = pola_posisi
+                        trace.textfont = dict(size=9, color='#92400e', weight='bold')
 
             # Beri margin kanan (r=80) agar aman
             fig_export.update_layout(margin=dict(t=60, b=60, l=30, r=80))
