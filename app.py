@@ -369,12 +369,35 @@ if df_target is not None:
 
     with header_ui:
         st.markdown(f"### {title_text}")
-        c1, c2, c3 = st.columns(3)
+        
+        # 🔥 AREA INPUT MANUAL REALISASI BPS (c-t-c) 🔥
+        # Ubah kata None menjadi angka jika data BPS sudah rilis (Contoh: 5.11)
+        realisasi_bps_ctc = None 
+        
+        # Kita ubah jadi 4 kolom agar muat semua
+        c1, c2, c3, c4 = st.columns(4)
+        
+        # 1. KOTAK TARGET
         c1.metric("Target Acuan", f"{current_target}%")
-        gap = current_avg - current_target
-        c2.metric("Realisasi/Proyeksi Avg", f"{current_avg:.2f}%", delta=f"{gap:.2f}%")
-        status = "✅ SESUAI TARGET" if gap >= -0.1 else "❌ BELOW TARGET"
-        c3.metric("Status Capaian", status, delta_color="normal" if gap >= -0.1 else "inverse")
+        
+        # 2. KOTAK REALISASI BPS (MANUAL)
+        if realisasi_bps_ctc is not None:
+            gap_realisasi = realisasi_bps_ctc - current_target
+            c2.metric("Realisasi BPS (c-t-c)", f"{realisasi_bps_ctc}%", delta=f"{gap_realisasi:.2f}%")
+        else:
+            c2.metric("Realisasi BPS (c-t-c)", "Belum Rilis", delta="-", delta_color="off")
+            
+        # 3. KOTAK PROYEKSI DFM (OTOMATIS)
+        gap_proyeksi = current_avg - current_target
+        c3.metric("Proyeksi DFM (Avg)", f"{current_avg:.2f}%", delta=f"{gap_proyeksi:.2f}%")
+        
+        # 4. KOTAK STATUS CAPAIAN
+        # Logika Pintar: Jika BPS sudah rilis, status pakai data BPS. Jika belum, pakai data Proyeksi AI.
+        angka_acuan_status = realisasi_bps_ctc if realisasi_bps_ctc is not None else current_avg
+        gap_status = angka_acuan_status - current_target
+        
+        status = "✅ SESUAI TARGET" if gap_status >= -0.1 else "❌ BELOW TARGET"
+        c4.metric("Status Capaian", status, delta_color="normal" if gap_status >= -0.1 else "inverse")
 
     # =======================================================
     # MEMBANGUN GRAFIK DI BAWAH TOMBOL
