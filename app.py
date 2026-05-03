@@ -921,24 +921,31 @@ VOLATILITAS INDIKATOR HARIAN
 {daily_summary_str}
 
 =====================
+TUGAS KHUSUS: ANALISIS AKAR MASALAH (ROOT CAUSE) & FENOMENA PENDORONG
+=====================
+Anda WAJIB mengidentifikasi **akar masalah (root cause)** dari setiap indikator yang mengalami pelemahan, penguatan, atau volatilitas ekstrem berdasarkan fenomena fundamental, geopolitik, atau sentimen pasar terkini.
+- Contoh Data Bulanan: Jika IKK/PMI melemah, temukan akar masalahnya (misal: tekanan daya beli kelas menengah akibat inflasi pangan, perlambatan pesanan ekspor manufaktur).
+- Contoh Data Harian: Jika Brent/WTI, Nilai Tukar, atau IHSG bergejolak, temukan pemicu utamanya (misal: eskalasi geopolitik spesifik, pergeseran arah kebijakan The Fed).
+
+=====================
 STRUKTUR OUTPUT DOKUMEN:
 =====================
-Bagian Utama: ARAH KEBIJAKAN DAN STRATEGI PEMBANGUNAN
-Sajikan 5 Rekomendasi Kebijakan dengan format perencanaan pembangunan:
-- Arah Kebijakan: (Tegas, berorientasi solusi, bernada RKP/RPJMN)
-- Strategi Kebijakan dan Mekanisme Kebijakan: (Penjelasan teknokratis mengapa kebijakan ini krusial untuk mengejar target {current_target}%, dikaitkan dengan realisasi indikator makro saat ini).
+Bagian Utama: ARAH KEBIJAKAN DAN STRATEGI PEMBANGUNAN (FOKUS PROBLEM-SOLVING)
+Sajikan 5 Rekomendasi Kebijakan yang **benar-benar didesain sebagai OBAT PENAWAR untuk MENYELESAIKAN AKAR MASALAH** yang telah diidentifikasi di atas. DILARANG KERAS memberikan saran normatif atau *template* umum.
+- Arah Kebijakan: (Tegas, berorientasi penyelesaian masalah spesifik, bernada RKP/RPJMN)
+- Strategi dan Mekanisme Mitigasi: (Penjelasan teknokratis yang merinci BAGAIMANA strategi ini akan secara langsung menyelesaikan/memitigasi *root cause* atau fenomena spesifik yang sedang terjadi, agar target pertumbuhan {current_target}% dapat diselamatkan).
 - Referensi Akademis: [Nomor]. Dasar Teori - Penulis (Tahun) - Link Scholar: https://scholar.google.com/scholar?q=kata+kunci
 
 *Komposisi Kebijakan:*
-- 2 Kebijakan Stabilisasi Jangka Pendek.
-- 2 Kebijakan Transformasi Struktural.
-- 1 Kebijakan Terobosan yang Inovatif.
+- 2 Kebijakan Stabilisasi Jangka Pendek (Respons cepat, taktis, & *targeted* untuk memadamkan akar masalah volatilitas/pelemahan paling mendesak saat ini).
+- 2 Kebijakan Transformasi Struktural (Solusi jangka menengah untuk mencegah akar masalah fundamental terulang kembali).
+- 1 Kebijakan Terobosan Inovatif (Langkah *out-of-the-box* untuk mengakselerasi pertumbuhan di tengah tekanan fenomena yang ada).
 
 ---
 Bagian Bawah: LAMPIRAN ANALISIS TEKNIS
 (Buat pemisah visual, lalu berikan 2 analisis teknis singkat namun mendalam)
-- 1. Analisis Dinamika Makroekonomi: (Uraikan perbandingan antara data berjalan dengan data rata-rata).
-- 2. Identifikasi Risiko Transmisi Sektor Riil: (Uraikan jalur transmisi bagaimana volatilitas pasar/global saat ini berpotensi berdampak pada sektor manufaktur, daya beli, atau investasi bulanan).
+- 1. Analisis Dinamika Makroekonomi & Fenomena Fundamental: (Uraikan diagnosa tajam mengenai fenomena/akar masalah yang sedang mendikte pergerakan data saat ini).
+- 2. Identifikasi Risiko Transmisi Sektor Riil: (Uraikan jalur transmisi bagaimana akar masalah tersebut berpotensi menular/berdampak sistemik pada sektor manufaktur, daya beli, atau investasi domestik jika kebijakan mitigasi di atas tidak segera dieksekusi).
 """
                         res = model.generate_content(prompt, generation_config=generation_config)
                         
