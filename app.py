@@ -316,6 +316,12 @@ if df_target is not None:
         preds_2026 = [5.1, 5.2, 5.3, 5.4]
 
     real_2026 = [None, None, None, None]
+    if 2026 in df_triwulan['Tahun'].values:
+        row_2026 = df_triwulan[df_triwulan['Tahun'] == 2026].iloc[0]
+        for i, q in enumerate(['Q1', 'Q2', 'Q3', 'Q4']):
+            r = row_2026.get(f'Realisasi {q}', np.nan)
+            real_2026[i] = float(r) if pd.notna(r) else None
+
     now_2026 = preds_2026
 
     # =======================================================
@@ -323,7 +329,6 @@ if df_target is not None:
     # =======================================================
     header_ui = st.container()
 
-    # TOMBOL PILIHAN (Sekarang posisinya ada di bawah Metrik, tepat di atas Grafik)
     selected_view = st.radio(
         "Pilih Rentang Waktu Analisis:",
         ["2026", "2010 - 2026"],
@@ -332,12 +337,17 @@ if df_target is not None:
     )
 
     final_x, final_real, final_now, final_target = [], [], [], []
-    current_avg, current_target = 0, 0
+    current_avg, current_target = 0, t_2026
+
+    # Filter data realisasi 2026 yang benar-benar sudah rilis
+    x_2026 = ['2026-Q1', '2026-Q2', '2026-Q3', '2026-Q4']
+    valid_x_2026_real = [x_2026[i] for i, r in enumerate(real_2026) if r is not None]
+    valid_y_2026_real = [r for r in real_2026 if r is not None]
 
     if selected_view == "2026":
         final_x = ['Q1', 'Q2', 'Q3', 'Q4']
         final_real, final_now, final_target = real_2026, now_2026, [t_2026]*4
-        current_avg, current_target = np.mean(now_2026), t_2026
+        current_avg = np.mean(now_2026)
     else: 
         df_h = df_hist_gdp.copy()
         try:
@@ -354,11 +364,25 @@ if df_target is not None:
             
         y_hist = series_hist.values.tolist()
         x_2025 = ['2025-Q1', '2025-Q2', '2025-Q3', '2025-Q4']
-        x_2026 = ['2026-Q1', '2026-Q2', '2026-Q3', '2026-Q4']
         
-        full_x_real, full_y_real = x_hist + x_2025, y_hist + combined_2025
-        full_x_proj, full_y_proj = [x_2025[-1]] + x_2026, [combined_2025[-1]] + preds_2026
-        current_avg, current_target = np.mean(preds_2026), t_2026
+        # Gabungkan sejarah, 2025, dan data 2026 yang SUDAH RILIS
+        full_x_real = x_hist + x_2025 + valid_x_2026_real
+        full_y_real = y_hist + combined_2025 + valid_y_2026_real
+        
+        # Titik mulai garis proyeksi menyesuaikan dengan data realisasi terakhir!
+        if valid_y_2026_real:
+            last_real_x = valid_x_2026_real[-1]
+            last_real_y = valid_y_2026_real[-1]
+            sisa_q = len(valid_y_2026_real) # Jumlah kuartal yg sudah rilis
+            
+            # Proyeksi hanya melanjutkan sisa kuartal yang belum rilis
+            full_x_proj = [last_real_x] + x_2026[sisa_q:]
+            full_y_proj = [last_real_y] + preds_2026[sisa_q:]
+        else:
+            full_x_proj = [x_2025[-1]] + x_2026
+            full_y_proj = [combined_2025[-1]] + preds_2026
+            
+        current_avg = np.mean(preds_2026)
 
     # =======================================================
     # MENGISI WADAH ATAS DENGAN JUDUL DAN ANGKA
@@ -370,29 +394,29 @@ if df_target is not None:
     with header_ui:
         st.markdown(f"### {title_text}")
         
-        # 🔥 AREA INPUT MANUAL REALISASI BPS (c-t-c) 🔥
-        # Ubah kata None menjadi angka jika data BPS sudah rilis (Contoh: 5.11)
-        realisasi_bps_ctc = None 
+        # 🔥 C-T-C DIHITUNG OTOMATIS DARI EXCEL 🔥
+        if len(valid_y_2026_real) > 0:
+            realisasi_bps_ctc = sum(valid_y_2026_real) / len(valid_y_2026_real)
+        else:
+            realisasi_bps_ctc = None 
         
-        # Kita ubah jadi 4 kolom agar muat semua
         c1, c2, c3, c4 = st.columns(4)
         
         # 1. KOTAK TARGET
         c1.metric("Target Acuan", f"{current_target}%")
         
-        # 2. KOTAK REALISASI BPS (MANUAL)
+        # 2. KOTAK REALISASI BPS (OTOMATIS)
         if realisasi_bps_ctc is not None:
             gap_realisasi = realisasi_bps_ctc - current_target
-            c2.metric("Realisasi BPS (c-t-c)", f"{realisasi_bps_ctc}%", delta=f"{gap_realisasi:.2f}%")
+            c2.metric("Realisasi BPS (c-t-c)", f"{realisasi_bps_ctc:.2f}%", delta=f"{gap_realisasi:.2f}%")
         else:
             c2.metric("Realisasi BPS (c-t-c)", "Belum Rilis", delta="-", delta_color="off")
             
-        # 3. KOTAK PROYEKSI DFM (OTOMATIS)
+        # 3. KOTAK PROYEKSI DFM (Avg)
         gap_proyeksi = current_avg - current_target
         c3.metric("Proyeksi DFM (Avg)", f"{current_avg:.2f}%", delta=f"{gap_proyeksi:.2f}%")
         
         # 4. KOTAK STATUS CAPAIAN
-        # Logika Pintar: Jika BPS sudah rilis, status pakai data BPS. Jika belum, pakai data Proyeksi AI.
         angka_acuan_status = realisasi_bps_ctc if realisasi_bps_ctc is not None else current_avg
         gap_status = angka_acuan_status - current_target
         
