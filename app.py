@@ -945,31 +945,33 @@ VOLATILITAS INDIKATOR HARIAN
 {daily_summary_str}
 
 =====================
-TUGAS KHUSUS: ANALISIS AKAR MASALAH (ROOT CAUSE) & FENOMENA PENDORONG
+TUGAS KHUSUS: ANALISIS FAKTUAL BERBASIS BERITA & SUMBER RESMI TERPERCAYA
 =====================
-Anda WAJIB mengidentifikasi **akar masalah (root cause)** dari setiap indikator yang mengalami pelemahan, penguatan, atau volatilitas ekstrem berdasarkan fenomena fundamental, geopolitik, atau sentimen pasar terkini.
-- Contoh Data Bulanan: Jika IKK/PMI melemah, temukan akar masalahnya (misal: tekanan daya beli kelas menengah akibat inflasi pangan, perlambatan pesanan ekspor manufaktur).
-- Contoh Data Harian: Jika Brent/WTI, Nilai Tukar, atau IHSG bergejolak, temukan pemicu utamanya (misal: eskalasi geopolitik spesifik, pergeseran arah kebijakan The Fed).
+Anda WAJIB mengidentifikasi **akar masalah (root cause) yang FAKTUAL dan VALID** atas setiap anomali, pelemahan, atau lonjakan indikator (baik bulanan maupun harian). 
+DILARANG KERAS menggunakan analisis hipotetis atau tebakan umum. Anda harus mengaitkannya dengan **peristiwa nyata terkini, rilis data lembaga resmi (BI, The Fed, IMF, World Bank, dll), atau eskalasi geopolitik/geoekonomi riil yang terjadi di dunia**.
+- Contoh: Jika Brent/WTI melonjak, JANGAN hanya bilang "karena masalah suplai", TAPI sebutkan secara spesifik (misal: "Terdorong oleh eskalasi konflik di Timur Tengah antara [Pihak A] dan [Pihak B] yang mengancam jalur logistik di Selat Hormuz").
+- Contoh: Jika Rupiah/Obligasi tertekan, sebutkan fenomena resminya (misal: "Respons pasar terhadap kebijakan suku bunga *higher for longer* dari US Treasury yang memicu *capital outflow*").
+- Contoh: Jika IKK/PMI melemah, kaitkan dengan rilis perlambatan ekonomi di mitra dagang utama (Tiongkok/AS) atau efek rambatan inflasi pangan domestik (El Nino/musim tanam).
 
 =====================
 STRUKTUR OUTPUT DOKUMEN:
 =====================
 Bagian Utama: ARAH KEBIJAKAN DAN STRATEGI PEMBANGUNAN (FOKUS PROBLEM-SOLVING)
-Sajikan 5 Rekomendasi Kebijakan yang **benar-benar didesain sebagai OBAT PENAWAR untuk MENYELESAIKAN AKAR MASALAH** yang telah diidentifikasi di atas. DILARANG KERAS memberikan saran normatif atau *template* umum.
-- Arah Kebijakan: (Tegas, berorientasi penyelesaian masalah spesifik, bernada RKP/RPJMN)
-- Strategi dan Mekanisme Mitigasi: (Penjelasan teknokratis yang merinci BAGAIMANA strategi ini akan secara langsung menyelesaikan/memitigasi *root cause* atau fenomena spesifik yang sedang terjadi, agar target pertumbuhan {current_target}% dapat diselamatkan).
-- Referensi Akademis: [Nomor]. Dasar Teori - Penulis (Tahun) - Link Scholar: https://scholar.google.com/scholar?q=kata+kunci
+Sajikan 5 Rekomendasi Kebijakan yang didesain secara spesifik sebagai **OBAT PENAWAR atas fenomena riil** yang telah Anda identifikasi di atas.
+- Arah Kebijakan: (Tegas, berorientasi penyelesaian masalah, bernada RKP)
+- Strategi dan Mekanisme Mitigasi: (Penjelasan teknokratis BAGAIMANA strategi ini merespons langsung peristiwa geopolitik/ekonomi riil yang sedang menekan target {current_target}%).
+- Referensi Akademis/Lembaga: [Nomor]. Dasar Teori/Laporan - Penulis/Lembaga (Tahun) - Link/Konteks (Bisa merujuk pada publikasi BI, World Bank, atau Jurnal bereputasi).
 
 *Komposisi Kebijakan:*
-- 2 Kebijakan Stabilisasi Jangka Pendek (Respons cepat, taktis, & *targeted* untuk memadamkan akar masalah volatilitas/pelemahan paling mendesak saat ini).
-- 2 Kebijakan Transformasi Struktural (Solusi jangka menengah untuk mencegah akar masalah fundamental terulang kembali).
-- 1 Kebijakan Terobosan Inovatif (Langkah *out-of-the-box* untuk mengakselerasi pertumbuhan di tengah tekanan fenomena yang ada).
+- 2 Kebijakan Stabilisasi Jangka Pendek (Taktik *firefighting* atas gejolak harian/pasar terkini).
+- 2 Kebijakan Transformasi Struktural (Solusi *bottleneck* fundamental di sektor riil).
+- 1 Kebijakan Terobosan Inovatif.
 
 ---
 Bagian Bawah: LAMPIRAN ANALISIS TEKNIS
 (Buat pemisah visual, lalu berikan 2 analisis teknis singkat namun mendalam)
-- 1. Analisis Dinamika Makroekonomi & Fenomena Fundamental: (Uraikan diagnosa tajam mengenai fenomena/akar masalah yang sedang mendikte pergerakan data saat ini).
-- 2. Identifikasi Risiko Transmisi Sektor Riil: (Uraikan jalur transmisi bagaimana akar masalah tersebut berpotensi menular/berdampak sistemik pada sektor manufaktur, daya beli, atau investasi domestik jika kebijakan mitigasi di atas tidak segera dieksekusi).
+- 1. Analisis Dinamika Makroekonomi & Pemicu Fundamental: (Uraikan diagnosa tajam. WAJIB menyebutkan nama peristiwa/fenomena global atau domestik spesifik yang mendikte angka-angka tersebut).
+- 2. Identifikasi Risiko Transmisi Sektor Riil: (Uraikan jalur transmisi bagaimana fenomena krisis/gejolak riil tersebut berpotensi menular secara sistemik dari pasar keuangan harian ke sektor manufaktur, daya beli, atau investasi, jika mitigasi gagal).
 """
                         res = model.generate_content(prompt, generation_config=generation_config)
                         
