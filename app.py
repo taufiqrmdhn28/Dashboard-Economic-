@@ -948,10 +948,8 @@ VOLATILITAS INDIKATOR HARIAN
 TUGAS KHUSUS: ANALISIS FAKTUAL BERBASIS BERITA & SUMBER RESMI TERPERCAYA
 =====================
 Anda WAJIB mengidentifikasi **akar masalah (root cause) yang FAKTUAL dan VALID** atas setiap anomali, pelemahan, atau lonjakan indikator (baik bulanan maupun harian). 
-DILARANG KERAS menggunakan analisis hipotetis atau tebakan umum. Anda harus mengaitkannya dengan **peristiwa nyata terkini, rilis data lembaga resmi (BI, The Fed, IMF, World Bank, dll), atau eskalasi geopolitik/geoekonomi riil yang terjadi di dunia**.
-- Contoh: Jika Brent/WTI melonjak, JANGAN hanya bilang "karena masalah suplai", TAPI sebutkan secara spesifik (misal: "Terdorong oleh eskalasi konflik di Timur Tengah antara [Pihak A] dan [Pihak B] yang mengancam jalur logistik di Selat Hormuz").
-- Contoh: Jika Rupiah/Obligasi tertekan, sebutkan fenomena resminya (misal: "Respons pasar terhadap kebijakan suku bunga *higher for longer* dari US Treasury yang memicu *capital outflow*").
-- Contoh: Jika IKK/PMI melemah, kaitkan dengan rilis perlambatan ekonomi di mitra dagang utama (Tiongkok/AS) atau efek rambatan inflasi pangan domestik (El Nino/musim tanam).
+DILARANG KERAS menggunakan analisis hipotetis atau tebakan umum. Anda harus mengaitkannya dengan **fenomena yang terjadi saat ini, rilis data lembaga resmi (BI, The Fed, IMF, World Bank, dll) dan eskalasi geopolitik/geoekonomi riil yang terjadi di dunia**.
+
 
 =====================
 STRUKTUR OUTPUT DOKUMEN:
@@ -963,8 +961,8 @@ Sajikan 5 Rekomendasi Kebijakan yang didesain secara spesifik sebagai **OBAT PEN
 - Referensi Akademis/Lembaga: [Nomor]. Dasar Teori/Laporan - Penulis/Lembaga (Tahun) - Link/Konteks (Bisa merujuk pada publikasi BI, World Bank, atau Jurnal bereputasi).
 
 *Komposisi Kebijakan:*
-- 2 Kebijakan Stabilisasi Jangka Pendek (Taktik *firefighting* atas gejolak harian/pasar terkini).
-- 2 Kebijakan Transformasi Struktural (Solusi *bottleneck* fundamental di sektor riil).
+- 2 Kebijakan Stabilisasi Jangka Pendek (Strategi atas gejolak harian/pasar terkini).
+- 2 Kebijakan Transformasi Struktural (Solusi  dari bottleneck fundamental di sektor riil).
 - 1 Kebijakan Terobosan Inovatif.
 
 ---
