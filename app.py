@@ -429,7 +429,11 @@ if df_target is not None:
     fig = go.Figure()
 
     if selected_view == "2010 - 2026":
-        fig.add_trace(go.Scatter(x=full_x_real, y=full_y_real, name='Realisasi (2010-2025)', mode='lines', line=dict(color='#f1c40f', width=2.5)))
+        # PERBAIKAN LEGEND DINAMIS
+        latest_q_real = valid_x_2026_real[-1].split('-')[-1] if valid_x_2026_real else "Q4 2025"
+        legend_realisasi = f"Realisasi (Q1 2010-{latest_q_real} 2026)"
+
+        fig.add_trace(go.Scatter(x=full_x_real, y=full_y_real, name=legend_realisasi, mode='lines', line=dict(color='#f1c40f', width=2.5)))
         fig.add_trace(go.Scatter(x=full_x_proj, y=full_y_proj, name='Proyeksi DFM 2026', mode='lines', line=dict(color='#27ae60', width=2.5, dash='dot')))
         fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', legend=dict(orientation="h", y=1.1), height=450)
     else:
@@ -439,17 +443,17 @@ if df_target is not None:
         fig.update_layout(barmode='group', plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', legend=dict(orientation="h", y=1.1), height=450)
 
     # =======================================================
-    # SUNTIKAN MAGIC PLOTLY: MUNCULKAN ANGKA ATAS-BAWAH (ANTI-DEMPET)
+    # SUNTIKAN MAGIC PLOTLY: MUNCULKAN ANGKA ATAS-BAWAH (ANTI-DEMPET & ANTI-DOBEL)
     # =======================================================
     for trace in fig.data:
         trace_name = getattr(trace, 'name', '')
         
         # 1. TRACE REALISASI (Garis Utama Kuning)
-        if trace_name == 'Realisasi (2010-2025)':
+        if "Realisasi" in trace_name and "2010-" in trace_name:
             text_labels, marker_sizes, text_pos = [], [], []
             if trace.x is not None and trace.y is not None:
                 for i, y_val in enumerate(trace.y):
-                    # HANYA aktifkan di titik paling terakhir (Q4 2025)
+                    # HANYA aktifkan di titik paling terakhir
                     if i == len(trace.x) - 1 and pd.notna(y_val): 
                         text_labels.append(f"<b>{float(y_val):.2f}%</b>")
                         marker_sizes.append(10)
@@ -460,7 +464,7 @@ if df_target is not None:
                 trace.mode = "lines+markers+text"
                 trace.text = text_labels
                 trace.textposition = text_pos 
-                trace.textfont = dict(size=13, color="#0f172a") # Font di-bold dan sedikit diperbesar
+                trace.textfont = dict(size=13, color="#0f172a") 
                 
                 if not hasattr(trace, 'marker') or trace.marker is None: trace.marker = dict()
                 trace.marker.size = marker_sizes
@@ -472,13 +476,12 @@ if df_target is not None:
         elif trace_name == 'Proyeksi DFM 2026':
             text_labels, marker_sizes, text_pos = [], [], []
             if trace.x is not None and trace.y is not None:
-                # Karena titik Q4 2025 (Kuning) di Atas, titik Q1 2026 (Hijau) kita mulai dari BAWAH
                 pos_toggle = True # True = bawah, False = atas
-                for x_val, y_val in zip(trace.x, trace.y):
-                    if '2026' in str(x_val) and pd.notna(y_val):
+                for i, (x_val, y_val) in enumerate(zip(trace.x, trace.y)):
+                    # LOGIKA ANTI DOBEL: Jangan print label di i == 0 (titik jembatan)
+                    if i > 0 and '2026' in str(x_val) and pd.notna(y_val):
                         text_labels.append(f"<b>{float(y_val):.2f}%</b>")
                         marker_sizes.append(10)
-                        # Taruh selang-seling murni Atas/Bawah Center
                         text_pos.append("bottom center" if pos_toggle else "top center")
                         pos_toggle = not pos_toggle
                     else:
@@ -508,7 +511,7 @@ if df_target is not None:
                         
                 trace.mode = "lines+markers+text"
                 trace.text = text_labels
-                trace.textposition = "top center" # Tampilan 2026 jarak antar kuartalnya lebar, aman di atas semua
+                trace.textposition = "top center" 
                 trace.textfont = dict(size=14, color="#0f172a")
                 
                 if not hasattr(trace, 'marker') or trace.marker is None: trace.marker = dict()
