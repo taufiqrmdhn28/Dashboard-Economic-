@@ -437,9 +437,36 @@ if df_target is not None:
         fig.add_trace(go.Scatter(x=full_x_proj, y=full_y_proj, name='Proyeksi DFM 2026', mode='lines', line=dict(color='#27ae60', width=2.5, dash='dot')))
         fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', legend=dict(orientation="h", y=1.1), height=450)
     else:
-        fig.add_trace(go.Bar(x=final_x, y=final_real, name='Realisasi (BPS)', marker_color='#2980b9', text=[f"{v:.2f}%" if v else "" for v in final_real], textposition='auto'))
-        fig.add_trace(go.Scatter(x=final_x, y=final_now, name='DFM Nowcasting', mode='lines+markers', line=dict(color='#f39c12', width=4, shape='spline'), text=[f"{v:.2f}%" for v in final_now], textposition='top center'))
-        fig.add_trace(go.Scatter(x=final_x, y=final_target, name='Target APBN', mode='lines', line=dict(color='#c0392b', width=3, dash='dash')))
+        # 🔥 SETTINGAN GRAFIK BATANG (BAR) AGAR TEKS DI TENGAH 🔥
+        fig.add_trace(go.Bar(
+            x=final_x, 
+            y=final_real, 
+            name='Realisasi (BPS)', 
+            marker_color='#2980b9', 
+            text=[f"{v:.2f}%" if v else "" for v in final_real], 
+            textposition='inside', 
+            insidetextanchor='middle', # <--- INI KUNCI BIAR KE TENGAH
+            textfont=dict(color='white', size=14) # Putih dan agak besar biar jelas
+        ))
+        
+        # Garis Nowcasting
+        fig.add_trace(go.Scatter(
+            x=final_x, y=final_now, 
+            name='DFM Nowcasting', 
+            mode='lines+markers', 
+            line=dict(color='#f39c12', width=4, shape='spline'), 
+            text=[f"{v:.2f}%" for v in final_now], 
+            textposition='top center'
+        ))
+        
+        # Garis Target APBN
+        fig.add_trace(go.Scatter(
+            x=final_x, y=final_target, 
+            name='Target APBN', 
+            mode='lines', 
+            line=dict(color='#c0392b', width=3, dash='dash')
+        ))
+        
         fig.update_layout(barmode='group', plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', legend=dict(orientation="h", y=1.1), height=450)
 
     # =======================================================
